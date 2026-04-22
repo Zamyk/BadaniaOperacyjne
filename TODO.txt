@@ -1,2 +1,0 @@
-- dodać generowanie inputu większego, losowego
-- zaimplementować najprostszy algorytm ewolucyjny czy jak to się nazywało (na razie bez krzyżowania, tylko mutacje)
