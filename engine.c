@@ -194,8 +194,15 @@ void toCsv(const Input* input, State* state, const char* path) {
 }
 
 
-void createRandomStartingState(Input* input, State* state) {
+Genotype* createRandomStartingState(Input* input, State* state) {
     srand(time(NULL));
+    Genotype *genotype = malloc(sizeof(Genotype));
+    genotype->genes = malloc(input->width * input->height * sizeof(Gen *));
+
+    for(int i = 0; i < input->height * input->height; i++) {
+        genotype->genes[i] = NULL;
+    }
+
     for(int p=0; p<input->width * input->height * 4; p++) {
         int x = rand() % (input->width + 1);
         int y = rand() % (input->height + 1);
@@ -203,6 +210,12 @@ void createRandomStartingState(Input* input, State* state) {
             Rotation rotation = rand() % 4;
             if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
                 addToState(input, state, i, (Point){x, y}, rotation);
+                Gen* newGen = malloc(sizeof(Gen));
+                newGen->polyominoIndex = i;
+                newGen->point = (Point){x, y};
+                newGen->rotation = rotation;
+                
+                genotype->genes[x + input->width * y] = newGen;
                 break;
             }
         }
@@ -213,6 +226,59 @@ void createRandomStartingState(Input* input, State* state) {
                 for(Rotation rotation = UP; rotation <= DOWN; rotation++) {
                     if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
                         addToState(input, state, i, (Point){x, y}, rotation);
+                        Gen* newGen = malloc(sizeof(Gen));
+                        newGen->polyominoIndex = i;
+                        newGen->point = (Point){x, y};
+                        newGen->rotation = rotation;
+                        
+                        genotype->genes[x + input->width * y] = newGen;
+                    }
+                }
+            }
+        }
+    }
+    genotype->state = state;
+
+    return genotype;
+}
+
+
+void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+    int width = input->width;
+    int height = input->height;
+    int totalCells = width * height;
+
+    int occupiedIndices[totalCells];
+    int count = 0;
+
+    for (int i = 0; i < totalCells; i++) {
+        if (genotype->genes[i] != NULL) {
+            occupiedIndices[count++] = i;
+        }
+    }
+
+    if (count == 0) return;
+
+    int randomIndex = occupiedIndices[rand() % count];
+    Gen* gen = genotype->genes[randomIndex];
+
+    removeFromState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+
+    free(gen); 
+    genotype->genes[randomIndex] = NULL;
+
+    for(int i = 0; i < input->nPolyominoTypes; i++) {
+        for(int y = 0; y < input->height; y++) {
+            for(int x = 0; x < input->width; x++) {
+                for(Rotation rotation = UP; rotation <= DOWN; rotation++) {
+                    if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
+                        addToState(input, state, i, (Point){x, y}, rotation);
+                        Gen* newGen = malloc(sizeof(Gen));
+                        newGen->polyominoIndex = i;
+                        newGen->point = (Point){x, y};
+                        newGen->rotation = rotation;
+                        
+                        genotype->genes[x + input->width * y] = newGen;
                     }
                 }
             }

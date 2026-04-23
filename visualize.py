@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-def visualize_board(csv_path):
+def visualize_board(csv_path, name=""):
     # Load the board, assuming no header
     try:
         board = pd.read_csv(csv_path, header=None).values
@@ -31,7 +31,8 @@ def visualize_board(csv_path):
 
     plt.title(f"Polyomino Board Visualization ({board.shape[1]}x{board.shape[0]})")
     plt.colorbar(im, ticks=range(int(np.max(board)) + 1), label="Polyomino ID")
-    plt.savefig(f"plot_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.png")
+    plt.savefig(f"{name}plot_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.png")
 
 if __name__ == "__main__":
+    visualize_board('out_prev.csv', "prev_")
     visualize_board('out.csv')

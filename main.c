@@ -25,7 +25,15 @@ int main(void) {
 
     // }
 
-    createRandomStartingState(&input, &state);
+    Genotype *genotype = createRandomStartingState(&input, &state);
+    toCsv(&input, &state, "out_prev.csv"); 
+
+    alterOneGeneMutation(&input, &state, genotype);
+    alterOneGeneMutation(&input, &state, genotype);
+    alterOneGeneMutation(&input, &state, genotype);
+    alterOneGeneMutation(&input, &state, genotype);
+    alterOneGeneMutation(&input, &state, genotype);
+    alterOneGeneMutation(&input, &state, genotype);
 
     toCsv(&input, &state, "out.csv");
 }

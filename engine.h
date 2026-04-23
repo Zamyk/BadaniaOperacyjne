@@ -58,4 +58,19 @@ void addToState(const Input* input, State* state, int polyominoIndex, Point posi
 void removeFromState(const Input* input, State* state, int polyominoIndex, Point position, Rotation rotation);
 void toCsv(const Input* input, State* state, const char* path);
 
-void createRandomStartingState(Input* input, State* state);
+
+typedef struct {
+  int polyominoIndex;
+  Point point;
+  Rotation rotation;
+} Gen;
+
+
+typedef struct {
+  State *state;
+  Gen **genes;
+} Genotype;
+
+
+Genotype* createRandomStartingState(Input* input, State* state);
+void alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
