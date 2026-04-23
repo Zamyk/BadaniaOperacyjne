@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
 def visualize_board(csv_path):
     # Load the board, assuming no header
@@ -30,8 +31,7 @@ def visualize_board(csv_path):
 
     plt.title(f"Polyomino Board Visualization ({board.shape[1]}x{board.shape[0]})")
     plt.colorbar(im, ticks=range(int(np.max(board)) + 1), label="Polyomino ID")
-    
-    plt.show()
+    plt.savefig(f"plot_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.png")
 
 if __name__ == "__main__":
     visualize_board('out.csv')

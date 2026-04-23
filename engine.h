@@ -57,3 +57,5 @@ bool canAddToState(const Input* input, const State* state, int polyominoIndex, P
 void addToState(const Input* input, State* state, int polyominoIndex, Point position, Rotation rotation);
 void removeFromState(const Input* input, State* state, int polyominoIndex, Point position, Rotation rotation);
 void toCsv(const Input* input, State* state, const char* path);
+
+void createRandomStartingState(Input* input, State* state);

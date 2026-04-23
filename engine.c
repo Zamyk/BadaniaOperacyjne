@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <time.h>
+
 // --- Polyomino ---
 
 Point getPolyominoPoint(Polyomino polyomino, Point position, Rotation rotation, int i) {
@@ -189,4 +191,31 @@ void toCsv(const Input* input, State* state, const char* path) {
 
     fclose(f);
     printf("Board state exported to %s\n", path);
+}
+
+
+void createRandomStartingState(Input* input, State* state) {
+    srand(time(NULL));
+    for(int p=0; p<input->width * input->height * 4; p++) {
+        int x = rand() % (input->width + 1);
+        int y = rand() % (input->height + 1);
+        for(int i = 0; i < input->nPolyominoTypes; i++) {
+            Rotation rotation = rand() % 4;
+            if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
+                addToState(input, state, i, (Point){x, y}, rotation);
+                break;
+            }
+        }
+    }
+    for(int i = 0; i < input->nPolyominoTypes; i++) {
+        for(int y = 0; y < input->height; y++) {
+            for(int x = 0; x < input->width; x++) {
+                for(Rotation rotation = UP; rotation <= DOWN; rotation++) {
+                    if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
+                        addToState(input, state, i, (Point){x, y}, rotation);
+                    }
+                }
+            }
+        }
+    }
 }
