@@ -99,9 +99,9 @@ Input createSmallExampleInput() {
 
     // available = 5 of each
     input.available = malloc(3 * sizeof(int));
-    input.available[0] = 8;
-    input.available[1] = 8;
-    input.available[2] = 8;
+    input.available[0] = 80;
+    input.available[1] = 80;
+    input.available[2] = 80;
 
     // penalties = 1 for each cell (10x10 = 100 cells)
     input.penalties = malloc(100 * sizeof(int));
@@ -190,22 +190,22 @@ void toCsv(const Input* input, State* state, const char* path) {
     }
 
     fclose(f);
-    printf("Board state exported to %s\n", path);
+    //printf("Board state exported to %s\n", path);
 }
 
 
 Genotype* createRandomStartingState(Input* input, State* state) {
-    srand(time(NULL));
+    //srand(3);
     Genotype *genotype = malloc(sizeof(Genotype));
     genotype->genes = malloc(input->width * input->height * sizeof(Gen *));
 
-    for(int i = 0; i < input->height * input->height; i++) {
+    for(int i = 0; i < input->width * input->height; i++) {
         genotype->genes[i] = NULL;
     }
 
     for(int p=0; p<input->width * input->height * 4; p++) {
-        int x = rand() % (input->width + 1);
-        int y = rand() % (input->height + 1);
+        int x = rand() % (input->width);
+        int y = rand() % (input->height);
         for(int i = 0; i < input->nPolyominoTypes; i++) {
             Rotation rotation = rand() % 4;
             if(canAddToState(input, state, i, (Point){x, y}, rotation)) {
@@ -237,7 +237,6 @@ Genotype* createRandomStartingState(Input* input, State* state) {
             }
         }
     }
-    genotype->state = state;
 
     return genotype;
 }
@@ -284,4 +283,44 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
             }
         }
     }
+}
+
+State copyState(const Input* input, const State* src) {
+    State dest;
+    dest.score = src->score;
+
+    int boardCells = input->width * input->height;
+    int nTypes = input->nPolyominoTypes;
+
+    dest.board = (int*)malloc(boardCells * sizeof(int));
+    if (dest.board) {
+        memcpy(dest.board, src->board, boardCells * sizeof(int));
+    }
+
+    dest.used = (int*)malloc(nTypes * sizeof(int));
+    if (dest.used) {
+        memcpy(dest.used, src->used, nTypes * sizeof(int));
+    }
+
+    return dest;
+}
+
+
+Genotype* copyGenotype(const Input* input, const Genotype* src) {
+    if (src == NULL) return NULL;
+
+    Genotype* dest = (Genotype*)malloc(sizeof(Genotype));
+
+    dest->genes = (Gen**)malloc(input->width*input->height * sizeof(Gen*));
+    
+    for (int i = 0; i < input->width*input->height; i++) {
+        if (src->genes[i] != NULL) {
+            dest->genes[i] = (Gen*)malloc(sizeof(Gen));
+            *(dest->genes[i]) = *(src->genes[i]);
+        } else {
+            dest->genes[i] = NULL;
+        }
+    }
+
+    return dest;
 }

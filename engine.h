@@ -67,10 +67,14 @@ typedef struct {
 
 
 typedef struct {
-  State *state;
   Gen **genes;
 } Genotype;
 
 
 Genotype* createRandomStartingState(Input* input, State* state);
 void alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
+
+
+Genotype* copyGenotype(const Input* input, const Genotype* src);
+
+State copyState(const Input* input, const State* src);
