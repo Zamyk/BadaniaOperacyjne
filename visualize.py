@@ -31,9 +31,8 @@ def visualize_board(csv_path, name=""):
 
     plt.title(f"Polyomino Board Visualization ({board.shape[1]}x{board.shape[0]})")
     plt.colorbar(im, ticks=range(int(np.max(board)) + 1), label="Polyomino ID")
-    plt.savefig(f"plots/plot_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}{name}.png")
+    plt.savefig(f"plots/plot_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}{name}.png")
 
 if __name__ == "__main__":
-    visualize_board('out_prev.csv', "_prev")
-    visualize_board('out.csv')
-    visualize_board('out_past.csv', "_past")
+    visualize_board('initial_best.csv', "_initial")
+    visualize_board('best_final.csv', "_final")

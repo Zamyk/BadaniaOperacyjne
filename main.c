@@ -22,6 +22,16 @@ int main(void) {
     int n_mutations = 6;
     double weights[6] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
 
+    for (int i = 0; i < 10 - 1; i++) {
+        for (int j = 0; j < 10 - i - 1; j++) {
+            if (states[j].score < states[j + 1].score) {
+                State temp_s = states[j]; states[j] = states[j + 1]; states[j + 1] = temp_s;
+                Genotype *temp_g = genotypes[j]; genotypes[j] = genotypes[j + 1]; genotypes[j + 1] = temp_g;
+            }
+        }
+    }
+    toCsv(&input, &states[0], "initial_best.csv"); 
+
     for (int k = 0; k < n_generations; k++) {
         
         // 3. Dla każdej z 10 instancji (z indeksów 0-9) tworzymy 9 mutacji (na indeksach 10-99)
@@ -79,6 +89,6 @@ int main(void) {
     }
     free(genotypes);
     free(states);
-
+    
     return 0;
 }
