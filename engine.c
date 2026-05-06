@@ -96,6 +96,11 @@ Input createSmallExampleInput() {
 
     // values = 0 for all types
     input.values = calloc(3, sizeof(int));
+    // testowałem wartości dla klocków
+    // input.values = malloc(3 * sizeof(int));
+    // input.values[0] = 10; // T-block wart 10
+    // input.values[1] = 10; // L-block wart 10
+    // input.values[2] = 10; // S-block wart 10
 
     // available = 5 of each
     input.available = malloc(3 * sizeof(int));
@@ -133,6 +138,9 @@ State createState(const Input* input) {
     
     state.used = malloc(input->nPolyominoTypes * sizeof(int));
     state.score = 0;
+    for (int i = 0; i < 100; i++) {
+        state.score -= input->penalties[i]; 
+    }
     return state;
 }
 
@@ -155,7 +163,7 @@ void addToState(const Input* input, State* state, int polyominoIndex, Point posi
 
     for (int i = 0; i < input->polyominoTypes[polyominoIndex].nPoints; ++i) {
         Point p = getPolyominoPoint(input->polyominoTypes[polyominoIndex], position, rotation, i);
-        state->score -= input->penalties[p.x + input->width * p.y];
+        state->score += input->penalties[p.x + input->width * p.y];
     }
 }
 
@@ -166,7 +174,7 @@ void removeFromState(const Input* input, State* state, int polyominoIndex, Point
 
     for (int i = 0; i < input->polyominoTypes[polyominoIndex].nPoints; ++i) {
         Point p = getPolyominoPoint(input->polyominoTypes[polyominoIndex], position, rotation, i);
-        state->score += input->penalties[p.x + input->width * p.y];
+        state->score -= input->penalties[p.x + input->width * p.y];
     }
 }
 
