@@ -19,6 +19,8 @@ int main(void) {
     }
 
     int n_generations = 100; // liczba pokoleń
+    int n_mutations = 6;
+    double weights[6] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
 
     for (int k = 0; k < n_generations; k++) {
         
@@ -29,9 +31,20 @@ int main(void) {
                 states[child_idx] = copyState(&input, &states[i]);
                 genotypes[child_idx] = copyGenotype(&input, genotypes[i]);
                 
-                alterOneGeneMutation(&input, &states[child_idx], genotypes[child_idx]);
+                int parentScore = states[i].score;
+                int chosenMut = mutate(&input, &states[child_idx], genotypes[child_idx], weights, n_mutations);
+                
+                if (states[child_idx].score > parentScore) {
+                    weights[chosenMut] += 1.0;
+                }
+                
                 child_idx++;
             }
+        }
+        
+        for (int m = 0; m < n_mutations; m++) {
+            weights[m] *= 0.99;
+            if (weights[m] < 1.0) weights[m] = 1.0;
         }
 
         // 4. Sortujemy całą setkę malejąco po score

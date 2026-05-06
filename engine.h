@@ -73,6 +73,12 @@ typedef struct {
 
 Genotype* createRandomStartingState(Input* input, State* state);
 void alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
+void removeOneGeneMutation(Input* input, State* state, Genotype* genotype);
+void addOneGeneMutation(Input* input, State* state, Genotype* genotype);
+void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype);
+void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype);
+void clearAreaMutation(Input* input, State* state, Genotype* genotype);
+int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights);
 
 
 Genotype* copyGenotype(const Input* input, const Genotype* src);

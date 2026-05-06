@@ -285,6 +285,170 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     }
 }
 
+void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+    int totalCells = input->width * input->height;
+    int* occupiedIndices = malloc(totalCells * sizeof(int));
+    int count = 0;
+
+    for (int i = 0; i < totalCells; i++) {
+        if (genotype->genes[i] != NULL) {
+            occupiedIndices[count++] = i;
+        }
+    }
+
+    if (count == 0) {
+        free(occupiedIndices);
+        return;
+    }
+
+    int randomIndex = occupiedIndices[rand() % count];
+    Gen* gen = genotype->genes[randomIndex];
+
+    removeFromState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+
+    free(gen);
+    genotype->genes[randomIndex] = NULL;
+    free(occupiedIndices);
+}
+
+void addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+    int maxAttempts = 100;
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        int x = rand() % input->width;
+        int y = rand() % input->height;
+        int polyType = rand() % input->nPolyominoTypes;
+        Rotation rot = rand() % 4;
+
+        if (canAddToState(input, state, polyType, (Point){x, y}, rot)) {
+            addToState(input, state, polyType, (Point){x, y}, rot);
+            Gen* newGen = malloc(sizeof(Gen));
+            newGen->polyominoIndex = polyType;
+            newGen->point = (Point){x, y};
+            newGen->rotation = rot;
+            genotype->genes[x + input->width * y] = newGen;
+            return;
+        }
+    }
+}
+
+void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+    int totalCells = input->width * input->height;
+    int* occupiedIndices = malloc(totalCells * sizeof(int));
+    int count = 0;
+    for (int i = 0; i < totalCells; i++) {
+        if (genotype->genes[i] != NULL) occupiedIndices[count++] = i;
+    }
+    if (count == 0) {
+        free(occupiedIndices);
+        return;
+    }
+    int randomIndex = occupiedIndices[rand() % count];
+    Gen* gen = genotype->genes[randomIndex];
+    
+    removeFromState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+    genotype->genes[randomIndex] = NULL;
+    
+    int dx[] = {0, 0, 1, -1};
+    int dy[] = {1, -1, 0, 0};
+    int dir = rand() % 4;
+    Point newPoint = {gen->point.x + dx[dir], gen->point.y + dy[dir]};
+    
+    if (canAddToState(input, state, gen->polyominoIndex, newPoint, gen->rotation)) {
+        addToState(input, state, gen->polyominoIndex, newPoint, gen->rotation);
+        gen->point = newPoint;
+        genotype->genes[newPoint.x + input->width * newPoint.y] = gen;
+    } else {
+        // revert
+        addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+        genotype->genes[randomIndex] = gen;
+    }
+    free(occupiedIndices);
+}
+
+void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+    int totalCells = input->width * input->height;
+    int* occupiedIndices = malloc(totalCells * sizeof(int));
+    int count = 0;
+    for (int i = 0; i < totalCells; i++) {
+        if (genotype->genes[i] != NULL) occupiedIndices[count++] = i;
+    }
+    if (count == 0) {
+        free(occupiedIndices);
+        return;
+    }
+    int randomIndex = occupiedIndices[rand() % count];
+    Gen* gen = genotype->genes[randomIndex];
+    
+    removeFromState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+    genotype->genes[randomIndex] = NULL;
+    
+    Rotation newRot = (gen->rotation + 1 + (rand() % 3)) % 4; // pick any of the other 3
+    
+    if (canAddToState(input, state, gen->polyominoIndex, gen->point, newRot)) {
+        addToState(input, state, gen->polyominoIndex, gen->point, newRot);
+        gen->rotation = newRot;
+        genotype->genes[randomIndex] = gen;
+    } else {
+        // revert
+        addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+        genotype->genes[randomIndex] = gen;
+    }
+    free(occupiedIndices);
+}
+
+void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
+    int cx = rand() % input->width;
+    int cy = rand() % input->height;
+    int areaSize = 4;
+    
+    int minX = cx - areaSize / 2;
+    int maxX = cx + areaSize / 2;
+    int minY = cy - areaSize / 2;
+    int maxY = cy + areaSize / 2;
+    
+    for (int i = 0; i < input->width * input->height; i++) {
+        Gen* gen = genotype->genes[i];
+        if (gen != NULL) {
+            if (gen->point.x >= minX && gen->point.x <= maxX &&
+                gen->point.y >= minY && gen->point.y <= maxY) {
+                removeFromState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
+                free(gen);
+                genotype->genes[i] = NULL;
+            }
+        }
+    }
+}
+
+int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights) {
+    double totalWeight = 0;
+    for (int i = 0; i < num_weights; i++) {
+        totalWeight += weights[i];
+    }
+    
+    double r = ((double)rand() / (double)RAND_MAX) * totalWeight;
+    double current = 0;
+    int selected = num_weights - 1;
+    for (int i = 0; i < num_weights; i++) {
+        current += weights[i];
+        if (r <= current) {
+            selected = i;
+            break;
+        }
+    }
+    
+    switch (selected) {
+        case 0: alterOneGeneMutation(input, state, genotype); break;
+        case 1: removeOneGeneMutation(input, state, genotype); break;
+        case 2: addOneGeneMutation(input, state, genotype); break;
+        case 3: shiftOneGeneMutation(input, state, genotype); break;
+        case 4: rotateOneGeneMutation(input, state, genotype); break;
+        case 5: clearAreaMutation(input, state, genotype); break;
+        default: alterOneGeneMutation(input, state, genotype); selected = 0; break;
+    }
+    
+    return selected;
+}
+
 State copyState(const Input* input, const State* src) {
     State dest;
     dest.score = src->score;
