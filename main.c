@@ -21,6 +21,7 @@ int main(void) {
     int n_generations = 100; // liczba pokoleń
     int n_mutations = 6;
     double weights[6] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
+    double crossover_probability = 0.7;
 
     for (int i = 0; i < 10 - 1; i++) {
         for (int j = 0; j < 10 - i - 1; j++) {
@@ -38,8 +39,19 @@ int main(void) {
         int child_idx = 10;
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 9; j++) {
-                states[child_idx] = copyState(&input, &states[i]);
-                genotypes[child_idx] = copyGenotype(&input, genotypes[i]);
+
+                double r = (double)rand() / RAND_MAX;
+                if (r > crossover_probability) {
+                    // tylko mutacja
+                    states[child_idx] = copyState(&input, &states[i]);
+                    genotypes[child_idx] = copyGenotype(&input, genotypes[i]);
+                } else {
+                    // krzyżowanie + mutacja
+                    int partner_idx = rand() % 10; 
+                    genotypes[child_idx] = crossover(&input, genotypes[i], genotypes[partner_idx]);
+                    // budujemy stan od zera, bo geny od dwóch rodziców mogą na siebie nachodzić
+                    states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
+                }
                 
                 int parentScore = states[i].score;
                 int chosenMut = mutate(&input, &states[child_idx], genotypes[child_idx], weights, n_mutations);

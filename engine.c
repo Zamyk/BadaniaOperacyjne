@@ -427,6 +427,44 @@ void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
     }
 }
 
+Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype* parentB) {
+    Genotype* child = malloc(sizeof(Genotype));
+    int n = input->width * input->height;
+    
+    child->genes = malloc(n * sizeof(Gen*));
+
+    int cut = rand() % n;
+
+    for (int i = 0; i < n; i++) {
+        Gen* src = (i < cut) ? parentA->genes[i] : parentB->genes[i];
+        
+        if (src != NULL) {
+            child->genes[i] = malloc(sizeof(Gen));
+            child->genes[i]->polyominoIndex = src->polyominoIndex;
+            child->genes[i]->point = src->point;
+            child->genes[i]->rotation = src->rotation;
+        } else {
+            child->genes[i] = NULL;
+        }
+    }
+    return child;
+}
+
+State buildStateFromGenotype(const Input* input, const Genotype* genotype) {
+    State state = createState(input); 
+    int n = input->width * input->height; 
+
+    for (int i = 0; i < n; i++) {
+        Gen* g = genotype->genes[i];
+        if (g != NULL) { 
+            if (canAddToState(input, &state, g->polyominoIndex, g->point, g->rotation)) {
+                addToState(input, &state, g->polyominoIndex, g->point, g->rotation);
+            }
+        }
+    }
+    return state;
+}
+
 int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights) {
     double totalWeight = 0;
     for (int i = 0; i < num_weights; i++) {

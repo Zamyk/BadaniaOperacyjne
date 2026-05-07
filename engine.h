@@ -84,3 +84,6 @@ int mutate(Input* input, State* state, Genotype* genotype, double* weights, int 
 Genotype* copyGenotype(const Input* input, const Genotype* src);
 
 State copyState(const Input* input, const State* src);
+
+Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype* parentB);
+State buildStateFromGenotype(const Input* input, const Genotype* genotype);
