@@ -8,6 +8,10 @@ int main(void) {
 
     Input input = createSmallExampleInput();
 
+    for(int x = 0; x < input.height && x < input.width; x++) {
+        input.penalties[x + x * input.width] = -1000;
+    }
+
     Genotype **genotypes = malloc(100 * sizeof(Genotype *));
     State *states = malloc(100 * sizeof(State));
 
@@ -17,6 +21,7 @@ int main(void) {
         states[i] = copyState(&input, &base_state); 
         printf("Score: %d\n", states[i].score);
     }
+
 
     int n_generations = 100; // liczba pokoleń
     int n_mutations = 6;
@@ -43,7 +48,6 @@ int main(void) {
                 double r = (double)rand() / RAND_MAX;
                 if (r > crossover_probability) {
                     // tylko mutacja
-                    states[child_idx] = copyState(&input, &states[i]);
                     genotypes[child_idx] = copyGenotype(&input, genotypes[i]);
                 } else {
                     // krzyżowanie + mutacja
@@ -52,9 +56,12 @@ int main(void) {
                     // budujemy stan od zera, bo geny od dwóch rodziców mogą na siebie nachodzić
                     states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
                 }
-                
-                int parentScore = states[i].score;
+                states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
                 int chosenMut = mutate(&input, &states[child_idx], genotypes[child_idx], weights, n_mutations);
+                freeState(&states[child_idx]);
+                states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
+
+                int parentScore = states[i].score;
                 
                 if (states[child_idx].score > parentScore) {
                     weights[chosenMut] += 1.0;

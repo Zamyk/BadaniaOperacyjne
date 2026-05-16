@@ -450,7 +450,7 @@ Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype*
     return child;
 }
 
-State buildStateFromGenotype(const Input* input, const Genotype* genotype) {
+State buildStateFromGenotype(const Input* input, Genotype* genotype) {
     State state = createState(input); 
     int n = input->width * input->height; 
 
@@ -459,6 +459,9 @@ State buildStateFromGenotype(const Input* input, const Genotype* genotype) {
         if (g != NULL) { 
             if (canAddToState(input, &state, g->polyominoIndex, g->point, g->rotation)) {
                 addToState(input, &state, g->polyominoIndex, g->point, g->rotation);
+            } else {
+                free(genotype->genes[i]);
+                genotype->genes[i] = NULL;
             }
         }
     }
