@@ -4,15 +4,30 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 
-def rotate_point(x, y, enum_value):
-    """Moguje enum Rotation z C na stopnie i obraca punkt."""
-    # UP = 0, LEFT = 1, RIGHT = 2, DOWN = 3
-    rotation_map = {0: 0, 1: 90, 2: 270, 3: 180}
-    degrees = rotation_map.get(enum_value, 0)
-    
-    rad = np.radians(degrees)
-    cos_a, sin_a = int(np.round(np.cos(rad))), int(np.round(np.sin(rad)))
-    return x * cos_a - y * sin_a, x * sin_a + y * cos_a
+def rotate_point(x, y, rotation):
+    """
+    Dokładne odwzorowanie getPolyominoPoint() z C.
+
+    Enum:
+    UP    = 0
+    LEFT  = 1
+    RIGHT = 2
+    DOWN  = 3
+    """
+
+    if rotation == 0:      # UP
+        return x, y
+
+    elif rotation == 1:    # LEFT
+        return y, -x
+
+    elif rotation == 2:    # RIGHT
+        return -y, x
+
+    elif rotation == 3:    # DOWN
+        return -x, -y
+
+    return x, y
 
 def parse_custom_csv(csv_path):
     metadata = {}
