@@ -95,12 +95,12 @@ Input createSmallExampleInput() {
     input.polyominoTypes[2].points[3] = (Point){2, 1};
 
     // values = 0 for all types
-    input.values = calloc(3, sizeof(int));
+    // input.values = calloc(3, sizeof(int));
     // testowałem wartości dla klocków
-    // input.values = malloc(3 * sizeof(int));
-    // input.values[0] = 10; // T-block wart 10
-    // input.values[1] = 10; // L-block wart 10
-    // input.values[2] = 10; // S-block wart 10
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 10; // T-block wart 10
+    input.values[1] = 10; // L-block wart 10
+    input.values[2] = 10; // S-block wart 10
 
     // available = 5 of each
     input.available = malloc(3 * sizeof(int));

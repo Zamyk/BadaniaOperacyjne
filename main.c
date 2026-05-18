@@ -147,17 +147,19 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
         for (int i = 0; i < starting_states; i++) {
             for (int d = 0; d < single_state_duplications; d++) {
                 
-                // Clone genotype using the engine
+                // Klonowanie genotypu
                 children[child_idx].genotype = copyGenotype(&input, population[i].genotype);
-                children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
-                
-                // Inherit mutation counters from the parent
+
+                // POPRAWKA 1: Dziecko zaczyna z zerowym licznikiem mutacji dla TEJ generacji
                 for (int m = 0; m < 6; m++) {
                     children[child_idx].successful_mutations[m] = population[i].successful_mutations[m];
                     children[child_idx].failed_mutations[m] = population[i].failed_mutations[m];
                 }
 
-                // Mutate the child entity
+                // Najpierw budujemy stan początkowy dla dziecka
+                children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
+
+                // Mutujemy dziecko określone wielokrotnie
                 for (int m = 0; m < mutations_per_iteration; m++) {
                     int r = rand() % total_weight;
                     int current_sum = 0;
@@ -197,10 +199,14 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
                         global_fail[chosen_mut]++;
                         children[child_idx].failed_mutations[chosen_mut]++;
                     }
-
-                    freeState(&children[child_idx].state);
-                    children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
+                    
+                    // POPRAWKA 2: USUNIĘTO stąd freeState i buildStateFromGenotype!
                 }
+
+                // POPRAWKA 3: Budujemy ostateczny stan i wyliczamy score RAZ po wszystkich mutacjach
+                freeState(&children[child_idx].state);
+                children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
+
                 child_idx++;
             }
         }
@@ -213,7 +219,7 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
         for (int i = 0; i < total_children; i++) pool[starting_states + i] = children[i];
 
         // Bubble sort pool descending by score
-        for (int i = 0; i < pool_size - 1; i++) {
+        for (int i = 0; i < starting_states; i++) {
             for (int j = 0; j < pool_size - i - 1; j++) {
                 if (pool[j].state.score < pool[j + 1].state.score) {
                     Entity temp = pool[j];
@@ -223,18 +229,41 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
             }
         }
 
-        // Selection: Copy the best entities back to the main population
+        // 1. Tworzymy tymczasową tablicę na nową populację
+        Entity *new_population = malloc(starting_states * sizeof(Entity));
+
         for (int i = 0; i < starting_states; i++) {
-            population[i] = pool[i];
+            // Robimy pełną, głęboką kopię przetrwałych osobników
+            new_population[i].genotype = copyGenotype(&input, pool[i].genotype);
+            new_population[i].state = buildStateFromGenotype(&input, new_population[i].genotype);
+            new_population[i].state.score = pool[i].state.score; // Kopiujemy też wynik, jeśli jest potrzebny
+
+            // Kopiujemy tablice mutacji
+            for (int m = 0; m < 6; m++) {
+                new_population[i].successful_mutations[m] = pool[i].successful_mutations[m];
+                new_population[i].failed_mutations[m] = pool[i].failed_mutations[m];
+            }
         }
 
-        // Free memory of rejected entities
-        for (int i = starting_states; i < pool_size; i++) {
-            free(pool[i].genotype->genes);
-            free(pool[i].genotype);
-            freeState(&pool[i].state);
+        // 2. Teraz bezpiecznie zwalniamy CAŁĄ pamięć dzieci
+        for (int i = 0; i < total_children; i++) {
+            free(children[i].genotype->genes);
+            free(children[i].genotype);
+            freeState(&children[i].state);
         }
 
+        // 3. Zwalniamy starą populację
+        for (int i = 0; i < starting_states; i++) {
+            free(population[i].genotype->genes);
+            free(population[i].genotype);
+            freeState(&population[i].state);
+        }
+        free(population);
+
+        // 4. Nowa populacja staje się główną populacją
+        population = new_population;
+
+        // Czyszczenie tablic pomocniczych
         free(children);
         free(pool);
 
@@ -266,25 +295,25 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
     int selected_success[6] = {0, 0, 0, 0, 0, 0};
     int selected_fail[6] = {0, 0, 0, 0, 0, 0};
 
-    for (int i = 0; i < starting_states; i++) {
-        for (int m = 0; m < 6; m++) {
-            selected_success[m] += population[i].successful_mutations[m];
-            selected_fail[m] += population[i].failed_mutations[m];
-        }
+    for (int m = 0; m < 6; m++) {
+        selected_success[m] += population[0].successful_mutations[m];
+        selected_fail[m] += population[0].failed_mutations[m];
     }
 
     printf("\n======================== MUTATION STATISTICS ========================\n");
     printf("%-25s | %-16s | %-16s\n", "Mutation Name", "ALL ATTEMPTS", "SURVIVED SELECTION");
     printf("%-25s | %-7s / %-6s | %-7s / %-6s\n", "", "Success", "Failed", "Success", "Failed");
     printf("--------------------------------------------------------------------\n");
+    //int all_mut=0;
     for (int m = 0; m < 6; m++) {
+        //all_mut = all_mut + global_success[m] + global_fail[m];
         printf("%-25s | %-7d / %-6d | %-7d / %-6d\n", 
                MUTATION_NAMES[m], 
                global_success[m], global_fail[m], 
                selected_success[m], selected_fail[m]);
     }
     printf("====================================================================\n\n");
-
+    //printf("===%d===", all_mut);
     // Final clean up
     for (int i = 0; i < starting_states; i++) {
         free(population[i].genotype->genes);
