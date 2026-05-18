@@ -62,11 +62,11 @@ static void applyPenalty(Input* input, PenaltyType type) {
     for (int y = 0; y < input->height; y++) {
         for (int x = 0; x < input->width; x++) {
             int idx = x + input->width * y;
-            int penalty = 0; // Default to 0 (Uniform)
+            int penalty = 1;
 
             switch (type) {
                 case PENALTY_UNIFORM:
-                    penalty = 0;
+                    penalty = 1;
                     break;
                 case PENALTY_BAD_DIAGONAL:
                     if (x == y || x == input->width - 1 - y) penalty = -10;
@@ -123,9 +123,9 @@ static Input createTetrisPreset(int width, int height) {
     input.polyominoTypes[2].points[3] = (Point){2, 1};
 
     input.values = malloc(3 * sizeof(int));
-    input.values[0] = 10;
-    input.values[1] = 10;
-    input.values[2] = 10;
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
 
     input.available = malloc(3 * sizeof(int));
     input.available[0] = 1000000;
@@ -150,7 +150,7 @@ static Input createSimplePreset(int width, int height) {
     input.polyominoTypes[0].points[1] = (Point){1, 0};
 
     input.values = malloc(1 * sizeof(int));
-    input.values[0] = 2; 
+    input.values[0] = 0; 
 
     input.available = malloc(1 * sizeof(int));
     input.available[0] = 1000000;
@@ -169,7 +169,7 @@ static Input createRandomPreset(int width, int height) {
     input.available = malloc(input.nPolyominoTypes * sizeof(int));
 
     for (int i = 0; i < input.nPolyominoTypes; i++) {
-        int size = (rand() % 5) + 1; // size between 1 and 5
+        int size = (rand() % 5) + 2; // size between 1 and 5
         input.polyominoTypes[i].nPoints = size;
         input.polyominoTypes[i].points = malloc(size * sizeof(Point));
         
@@ -203,7 +203,7 @@ static Input createRandomPreset(int width, int height) {
             input.polyominoTypes[i].points[p] = neighbor;
         }
 
-        input.values[i] = size * 2;
+        input.values[i] = 0;
         input.available[i] = 1000000;
     }
 

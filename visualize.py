@@ -2,6 +2,7 @@ import os
 import glob
 import re
 import matplotlib.pyplot as plt
+plt.style.use('dark_background')
 import numpy as np
 
 def rotate_point(x, y, rotation):
@@ -112,7 +113,8 @@ def visualize_board(csv_path, output_dir="plots"):
     fig, ax = plt.subplots(figsize=(9, 9))
 
     # 1. Rysowanie tła (Wartości kar)
-    im_penalty = ax.imshow(penalty_board, cmap="YlGnBu", vmin=np.min(penalty_board), alpha=0.75, interpolation='nearest')
+    # Tło wyłączone, aby niezajęte klocki były czarne
+    # im_penalty = ax.imshow(penalty_board, cmap="YlGnBu", vmin=np.min(penalty_board), alpha=0.75, interpolation='nearest')
 
     # 2. Rysowanie kształtów klocków
     if len(placed_list) > 0:
@@ -139,7 +141,7 @@ def visualize_board(csv_path, output_dir="plots"):
     for y in range(height):
         for x in range(width):
             val = penalty_board[y, x]
-            text_color = "white" if val > np.max(penalty_board)*0.6 else "black"
+            text_color = "white" if poly_board[y, x] < 0 else "black"
             ax.text(x, y, int(val), ha="center", va="center", color=text_color, fontsize=9, weight='bold')
 
     ax.set_xticks(np.arange(-0.5, width, 1))
@@ -149,8 +151,9 @@ def visualize_board(csv_path, output_dir="plots"):
     ax.grid(color='grey', linestyle=':', linewidth=0.5)
 
     plt.title(f"Polyomino Board - Iteration {iteration} | Rank {rank}")
-    cbar = fig.colorbar(im_penalty, ax=ax, shrink=0.75)
-    cbar.set_label("Penalty Value", rotation=270, labelpad=15)
+    # Kolorbar ukryty, bo wyłączyliśmy mapę cieplną tła
+    # cbar = fig.colorbar(im_penalty, ax=ax, shrink=0.75)
+    # cbar.set_label("Penalty Value", rotation=270, labelpad=15)
 
     output_path = os.path.join(output_dir, f"plot_iter{iteration}_rank{rank}.png")
     plt.savefig(output_path, bbox_inches='tight')

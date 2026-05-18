@@ -135,11 +135,11 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         }
     }
 
-    for (int i = 0; i < starting_states; i++) {
-        char csv_name[64];
-        sprintf(csv_name, "experiment_iter%d_rank%d.csv", 999999, i);
-        customToCsv(&input, population[i].genotype, csv_name);
-    }
+    // for (int i = 0; i < starting_states; i++) {
+    //     char csv_name[64];
+    //     sprintf(csv_name, "experiment_iter%d_rank%d.csv", 999999, i);
+    //     customToCsv(&input, population[i].genotype, csv_name);
+    // }
 
     int best_score = -999999;
     int patience_counter = 0;
@@ -280,6 +280,7 @@ void experiment(Input input, int starting_states, int single_state_duplications,
                 char csv_name[64];
                 sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
                 customToCsv(&input, population[i].genotype, csv_name);
+                break;
             }
         }
 
@@ -297,6 +298,7 @@ void experiment(Input input, int starting_states, int single_state_duplications,
                 char csv_name[64];
                 sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
                 customToCsv(&input, population[i].genotype, csv_name);
+                break;
             }
             break;
         }
@@ -351,7 +353,7 @@ int main(int argc, char* argv[]) {
     test_params.rotateOneGeneMutation = 50;
     test_params.clearAreaMutation     = 100;
 
-    int starting_states = 100;
+    int starting_states = 10;
     int single_state_duplications = 100;
     int max_iterations = 1000;
     int mutations_per_iteration = 40;
@@ -375,6 +377,11 @@ int main(int argc, char* argv[]) {
                 else if (strcmp(argv[i], "good_corners") == 0) penalty = PENALTY_GOOD_CORNERS;
                 else if (strcmp(argv[i], "checkerboard") == 0) penalty = PENALTY_CHECKERBOARD;
             }
+            else if (strcmp(argv[i], "--starting_states") == 0 && i + 1 < argc) starting_states = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--duplications") == 0 && i + 1 < argc) single_state_duplications = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--max_iterations") == 0 && i + 1 < argc) max_iterations = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mutations") == 0 && i + 1 < argc) mutations_per_iteration = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--patience") == 0 && i + 1 < argc) patience = atoi(argv[++i]);
         }
     } else {
         printf("--- Problem Configuration ---\n");
@@ -392,11 +399,20 @@ int main(int argc, char* argv[]) {
         if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') penalty = (PenaltyType)atoi(buf);
 
         printf("\n--- Solver Configuration ---\n");
-        printf("Enter starting states (default 100): ");
+        printf("Enter starting states (default 10): ");
         if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') starting_states = atoi(buf);
         
         printf("Enter single state duplications (default 100): ");
         if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') single_state_duplications = atoi(buf);
+
+        printf("Enter max iterations (default 1000): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') max_iterations = atoi(buf);
+
+        printf("Enter mutations per iteration (default 40): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') mutations_per_iteration = atoi(buf);
+
+        printf("Enter patience (default 10): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') patience = atoi(buf);
     }
 
     printf("\nGenerating Input with width=%d, height=%d, preset=%d, penalty=%d...\n", width, height, preset, penalty);
