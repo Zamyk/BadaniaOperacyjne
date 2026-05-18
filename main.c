@@ -106,8 +106,7 @@ void customToCsv(Input *input, Genotype *genotype, const char *filename) {
     fclose(f);
 }
 
-void experiment(int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params) {
-    Input input = createSmallExampleInput();
+void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params) {
 
     int total_weight = params.alterOneGeneMutation +
                        params.removeOneGeneMutation +
@@ -336,8 +335,13 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
     free(population);
 }
 
-int main(void) {
+int main(int argc, char* argv[]) {
     srand((unsigned int)time(NULL));
+
+    int width = 10;
+    int height = 10;
+    PresetType preset = PRESET_TETRIS;
+    PenaltyType penalty = PENALTY_UNIFORM;
 
     Params test_params;
     test_params.alterOneGeneMutation  = 10;
@@ -347,8 +351,60 @@ int main(void) {
     test_params.rotateOneGeneMutation = 50;
     test_params.clearAreaMutation     = 100;
 
-    printf("Starting experiment with isolated entity tracking...\n");
-    experiment(10, 100, 1000, 20, 10, test_params);
+    int starting_states = 100;
+    int single_state_duplications = 100;
+    int max_iterations = 1000;
+    int mutations_per_iteration = 40;
+    int patience = 10;
 
+    if (argc > 1) {
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) width = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--height") == 0 && i + 1 < argc) height = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--preset") == 0 && i + 1 < argc) {
+                i++;
+                if (strcmp(argv[i], "tetris") == 0) preset = PRESET_TETRIS;
+                else if (strcmp(argv[i], "simple") == 0) preset = PRESET_SIMPLE;
+                else if (strcmp(argv[i], "random") == 0) preset = PRESET_RANDOM;
+            } else if (strcmp(argv[i], "--penalty") == 0 && i + 1 < argc) {
+                i++;
+                if (strcmp(argv[i], "uniform") == 0) penalty = PENALTY_UNIFORM;
+                else if (strcmp(argv[i], "bad_diagonal") == 0) penalty = PENALTY_BAD_DIAGONAL;
+                else if (strcmp(argv[i], "good_diagonal") == 0) penalty = PENALTY_GOOD_DIAGONAL;
+                else if (strcmp(argv[i], "bad_corners") == 0) penalty = PENALTY_BAD_CORNERS;
+                else if (strcmp(argv[i], "good_corners") == 0) penalty = PENALTY_GOOD_CORNERS;
+                else if (strcmp(argv[i], "checkerboard") == 0) penalty = PENALTY_CHECKERBOARD;
+            }
+        }
+    } else {
+        printf("--- Problem Configuration ---\n");
+        printf("Enter width (default 10): ");
+        char buf[256];
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') width = atoi(buf);
+        
+        printf("Enter height (default 10): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') height = atoi(buf);
+
+        printf("Choose preset (0: Tetris, 1: Simple, 2: Random) [default 0]: ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') preset = (PresetType)atoi(buf);
+
+        printf("Choose penalty (0: Uniform, 1: Bad Diagonal, 2: Good Diagonal, 3: Bad Corners, 4: Good Corners, 5: Checkerboard) [default 0]: ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') penalty = (PenaltyType)atoi(buf);
+
+        printf("\n--- Solver Configuration ---\n");
+        printf("Enter starting states (default 100): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') starting_states = atoi(buf);
+        
+        printf("Enter single state duplications (default 100): ");
+        if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') single_state_duplications = atoi(buf);
+    }
+
+    printf("\nGenerating Input with width=%d, height=%d, preset=%d, penalty=%d...\n", width, height, preset, penalty);
+    Input input = createInput(width, height, preset, penalty);
+
+    printf("Starting experiment with isolated entity tracking...\n");
+    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params);
+
+    freeInput(input);
     return 0;
 }

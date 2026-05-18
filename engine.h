@@ -40,7 +40,22 @@ typedef struct {
   int* penalties;
 } Input;
 
-Input createSmallExampleInput();
+typedef enum {
+  PRESET_TETRIS,
+  PRESET_SIMPLE,
+  PRESET_RANDOM
+} PresetType;
+
+typedef enum {
+  PENALTY_UNIFORM,
+  PENALTY_BAD_DIAGONAL,
+  PENALTY_GOOD_DIAGONAL,
+  PENALTY_BAD_CORNERS,
+  PENALTY_GOOD_CORNERS,
+  PENALTY_CHECKERBOARD
+} PenaltyType;
+
+Input createInput(int width, int height, PresetType preset, PenaltyType penalty);
 void freeInput(Input input);
 
 

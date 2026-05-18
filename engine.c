@@ -55,17 +55,50 @@ void removeFromBoard(int w, int h, int* board, Point position, Polyomino polyomi
 
 // --- Input ---
 
-Input createSmallExampleInput() {
+static void applyPenalty(Input* input, PenaltyType type) {
+    int totalCells = input->width * input->height;
+    input->penalties = malloc(totalCells * sizeof(int));
+
+    for (int y = 0; y < input->height; y++) {
+        for (int x = 0; x < input->width; x++) {
+            int idx = x + input->width * y;
+            int penalty = 0; // Default to 0 (Uniform)
+
+            switch (type) {
+                case PENALTY_UNIFORM:
+                    penalty = 0;
+                    break;
+                case PENALTY_BAD_DIAGONAL:
+                    if (x == y || x == input->width - 1 - y) penalty = -10;
+                    break;
+                case PENALTY_GOOD_DIAGONAL:
+                    if (x == y || x == input->width - 1 - y) penalty = 10;
+                    break;
+                case PENALTY_BAD_CORNERS:
+                    if ((x == 0 || x == input->width - 1) && (y == 0 || y == input->height - 1)) penalty = -10;
+                    break;
+                case PENALTY_GOOD_CORNERS:
+                    if ((x == 0 || x == input->width - 1) && (y == 0 || y == input->height - 1)) penalty = 10;
+                    break;
+                case PENALTY_CHECKERBOARD:
+                    if ((x + y) % 2 == 0) penalty = 5;
+                    else penalty = -5;
+                    break;
+            }
+            input->penalties[idx] = penalty;
+        }
+    }
+}
+
+static Input createTetrisPreset(int width, int height) {
     Input input;
-    input.width  = 10;
-    input.height = 10;
+    input.width  = width;
+    input.height = height;
     input.nPolyominoTypes = 3;
 
     input.polyominoTypes = malloc(3 * sizeof(Polyomino));
 
     // T-block
-    //  X
-    // XXX
     input.polyominoTypes[0].nPoints = 4;
     input.polyominoTypes[0].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[0].points[0] = (Point){0, 0};
@@ -74,9 +107,6 @@ Input createSmallExampleInput() {
     input.polyominoTypes[0].points[3] = (Point){1, 1};
 
     // L-block
-    // X
-    // X
-    // XX
     input.polyominoTypes[1].nPoints = 4;
     input.polyominoTypes[1].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[1].points[0] = (Point){0, 0};
@@ -85,8 +115,6 @@ Input createSmallExampleInput() {
     input.polyominoTypes[1].points[3] = (Point){1, 2};
 
     // S-block
-    //  XX
-    // XX
     input.polyominoTypes[2].nPoints = 4;
     input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[2].points[0] = (Point){0, 0};
@@ -94,26 +122,108 @@ Input createSmallExampleInput() {
     input.polyominoTypes[2].points[2] = (Point){1, 1};
     input.polyominoTypes[2].points[3] = (Point){2, 1};
 
-    // values = 0 for all types
-    // input.values = calloc(3, sizeof(int));
-    // testowałem wartości dla klocków
     input.values = malloc(3 * sizeof(int));
-    input.values[0] = 10; // T-block wart 10
-    input.values[1] = 10; // L-block wart 10
-    input.values[2] = 10; // S-block wart 10
+    input.values[0] = 10;
+    input.values[1] = 10;
+    input.values[2] = 10;
 
-    // available = 5 of each
     input.available = malloc(3 * sizeof(int));
-    input.available[0] = 80;
-    input.available[1] = 80;
-    input.available[2] = 80;
+    input.available[0] = 1000000;
+    input.available[1] = 1000000;
+    input.available[2] = 1000000;
 
-    // penalties = 1 for each cell (10x10 = 100 cells)
-    input.penalties = malloc(100 * sizeof(int));
-    for (int i = 0; i < 100; i++) {
-        input.penalties[i] = 0;
+    return input;
+}
+
+static Input createSimplePreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 1;
+
+    input.polyominoTypes = malloc(1 * sizeof(Polyomino));
+
+    // 2x1 block (domino)
+    input.polyominoTypes[0].nPoints = 2;
+    input.polyominoTypes[0].points  = malloc(2 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+
+    input.values = malloc(1 * sizeof(int));
+    input.values[0] = 2; 
+
+    input.available = malloc(1 * sizeof(int));
+    input.available[0] = 1000000;
+
+    return input;
+}
+
+static Input createRandomPreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 5;
+
+    input.polyominoTypes = malloc(input.nPolyominoTypes * sizeof(Polyomino));
+    input.values = malloc(input.nPolyominoTypes * sizeof(int));
+    input.available = malloc(input.nPolyominoTypes * sizeof(int));
+
+    for (int i = 0; i < input.nPolyominoTypes; i++) {
+        int size = (rand() % 5) + 1; // size between 1 and 5
+        input.polyominoTypes[i].nPoints = size;
+        input.polyominoTypes[i].points = malloc(size * sizeof(Point));
+        
+        // Very basic random polyomino generation: walk randomly
+        input.polyominoTypes[i].points[0] = (Point){0, 0};
+        for (int p = 1; p < size; p++) {
+            Point neighbor;
+            bool valid = false;
+            while (!valid) {
+                // Pick an existing point
+                int existing_idx = rand() % p;
+                Point existing = input.polyominoTypes[i].points[existing_idx];
+                
+                // Pick a direction
+                int dir = rand() % 4;
+                int dx = (dir == 0) ? 1 : (dir == 1) ? -1 : 0;
+                int dy = (dir == 2) ? 1 : (dir == 3) ? -1 : 0;
+                
+                neighbor = (Point){existing.x + dx, existing.y + dy};
+                
+                // Check if already exists
+                valid = true;
+                for (int check = 0; check < p; check++) {
+                    if (input.polyominoTypes[i].points[check].x == neighbor.x && 
+                        input.polyominoTypes[i].points[check].y == neighbor.y) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            input.polyominoTypes[i].points[p] = neighbor;
+        }
+
+        input.values[i] = size * 2;
+        input.available[i] = 1000000;
     }
 
+    return input;
+}
+
+Input createInput(int width, int height, PresetType preset, PenaltyType penalty) {
+    Input input;
+    switch(preset) {
+        case PRESET_TETRIS:
+            input = createTetrisPreset(width, height);
+            break;
+        case PRESET_SIMPLE:
+            input = createSimplePreset(width, height);
+            break;
+        case PRESET_RANDOM:
+            input = createRandomPreset(width, height);
+            break;
+    }
+    applyPenalty(&input, penalty);
     return input;
 }
 
@@ -136,9 +246,9 @@ State createState(const Input* input) {
         state.board[i] = -1;
     }
     
-    state.used = malloc(input->nPolyominoTypes * sizeof(int));
+    state.used = calloc(input->nPolyominoTypes, sizeof(int));
     state.score = 0;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < input->width * input->height; i++) {
         state.score -= input->penalties[i]; 
     }
     return state;
