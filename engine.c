@@ -204,7 +204,7 @@ void toCsv(const Input* input, State* state, const char* path) {
 
 Genotype* createRandomStartingState(Input* input, State* state) {
     //srand(3);
-    Genotype *genotype = malloc(sizeof(Genotype));
+    Genotype *genotype = calloc(1, sizeof(Genotype));
     genotype->genes = malloc(input->width * input->height * sizeof(Gen *));
 
     for(int i = 0; i < input->width * input->height; i++) {
@@ -250,7 +250,7 @@ Genotype* createRandomStartingState(Input* input, State* state) {
 }
 
 
-void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int width = input->width;
     int height = input->height;
     int totalCells = width * height;
@@ -264,7 +264,7 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         }
     }
 
-    if (count == 0) return;
+    if (count == 0) return false;
 
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -284,16 +284,16 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
                         newGen->polyominoIndex = i;
                         newGen->point = (Point){x, y};
                         newGen->rotation = rotation;
-                        
                         genotype->genes[x + input->width * y] = newGen;
                     }
                 }
             }
         }
     }
+    return true;
 }
 
-void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -306,7 +306,7 @@ void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
 
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
 
     int randomIndex = occupiedIndices[rand() % count];
@@ -317,9 +317,10 @@ void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     free(gen);
     genotype->genes[randomIndex] = NULL;
     free(occupiedIndices);
+    return true;
 }
 
-void addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int maxAttempts = 100;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
         int x = rand() % input->width;
@@ -334,12 +335,13 @@ void addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
             newGen->point = (Point){x, y};
             newGen->rotation = rot;
             genotype->genes[x + input->width * y] = newGen;
-            return;
+            return true;
         }
     }
+    return false;
 }
 
-void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -348,7 +350,7 @@ void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     }
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -365,15 +367,18 @@ void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         addToState(input, state, gen->polyominoIndex, newPoint, gen->rotation);
         gen->point = newPoint;
         genotype->genes[newPoint.x + input->width * newPoint.y] = gen;
+        free(occupiedIndices);
+        return true;
     } else {
         // revert
         addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return false;
     }
-    free(occupiedIndices);
 }
 
-void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -382,7 +387,7 @@ void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     }
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -396,15 +401,18 @@ void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         addToState(input, state, gen->polyominoIndex, gen->point, newRot);
         gen->rotation = newRot;
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return true;
     } else {
         // revert
         addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return false;
     }
-    free(occupiedIndices);
 }
 
-void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
+bool clearAreaMutation(Input* input, State* state, Genotype* genotype) {
     int cx = rand() % input->width;
     int cy = rand() % input->height;
     int areaSize = 4;
@@ -425,6 +433,7 @@ void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
             }
         }
     }
+    return true;
 }
 
 Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype* parentB) {
@@ -457,9 +466,23 @@ State buildStateFromGenotype(const Input* input, Genotype* genotype) {
     for (int i = 0; i < n; i++) {
         Gen* g = genotype->genes[i];
         if (g != NULL) { 
+            // 1. Sprawdzamy, czy CAŁY klocek zmieści się na planszy bez kolizji
             if (canAddToState(input, &state, g->polyominoIndex, g->point, g->rotation)) {
-                addToState(input, &state, g->polyominoIndex, g->point, g->rotation);
+                
+                // 2. STAWIANIE KLOCKA: Zamiast g->polyominoIndex, przekazujemy 'i' (unikalne ID).
+                // Dzięki temu każdy klocek otrzyma swój własny, unikalny kolor w Pythonie!
+                addToBoard(input->width, input->height, state.board, g->point, input->polyominoTypes[g->polyominoIndex], g->rotation, i);
+                
+                // Aktualizacja statystyk stanu
+                state.used[g->polyominoIndex]++;
+                state.score += input->values[g->polyominoIndex];
+                for (int p_idx = 0; p_idx < input->polyominoTypes[g->polyominoIndex].nPoints; ++p_idx) {
+                    Point p = getPolyominoPoint(input->polyominoTypes[g->polyominoIndex], g->point, g->rotation, p_idx);
+                    state.score += input->penalties[p.x + input->width * p.y];
+                }
+
             } else {
+                // 3. RESTRYKCJA: Jeśli wykryto nakładanie się, usuwamy wadliwy gen ewolucyjny
                 free(genotype->genes[i]);
                 genotype->genes[i] = NULL;
             }

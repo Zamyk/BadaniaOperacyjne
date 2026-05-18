@@ -68,16 +68,17 @@ typedef struct {
 
 typedef struct {
   Gen **genes;
+  int successful_mutations[6];
 } Genotype;
 
 
 Genotype* createRandomStartingState(Input* input, State* state);
-void alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void removeOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void addOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void clearAreaMutation(Input* input, State* state, Genotype* genotype);
+bool alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool removeOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool addOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool shiftOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool rotateOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool clearAreaMutation(Input* input, State* state, Genotype* genotype);
 int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights);
 
 

@@ -1,38 +1,161 @@
+import os
+import glob
+import re
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from datetime import datetime
 
-def visualize_board(csv_path, name=""):
-    # Load the board, assuming no header
+def rotate_point(x, y, enum_value):
+    """Moguje enum Rotation z C na stopnie i obraca punkt."""
+    # UP = 0, LEFT = 1, RIGHT = 2, DOWN = 3
+    rotation_map = {0: 0, 1: 90, 2: 270, 3: 180}
+    degrees = rotation_map.get(enum_value, 0)
+    
+    rad = np.radians(degrees)
+    cos_a, sin_a = int(np.round(np.cos(rad))), int(np.round(np.sin(rad)))
+    return x * cos_a - y * sin_a, x * sin_a + y * cos_a
+
+def parse_custom_csv(csv_path):
+    metadata = {}
+    poly_types = {}
+    penalties = []
+    placed_polyominoes = []
+    current_section = None
+    
+    with open(csv_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('['):
+                current_section = line
+                continue
+                
+            tokens = line.split(',')
+            
+            if current_section == '[METADATA]':
+                metadata[tokens[0]] = int(tokens[1])
+            elif current_section == '[POLYOMINO_TYPES]':
+                type_id = int(tokens[0])
+                n_points = int(tokens[1])
+                coords = []
+                for i in range(n_points):
+                    coords.append((int(tokens[2 + i*2]), int(tokens[3 + i*2])))
+                poly_types[type_id] = coords
+            elif current_section == '[PENALTIES]':
+                penalties.append([int(x) for x in tokens])
+            elif current_section == '[PLACED_POLYOMINOES]':
+                placed_polyominoes.append({
+                    'unique_id': int(tokens[0]),
+                    'type_id': int(tokens[1]),
+                    'x': int(tokens[2]),
+                    'y': int(tokens[3]),
+                    'rotation': int(tokens[4]) # Wartość całkowita enuma z C
+                })
+                
+    return metadata, poly_types, np.array(penalties), placed_polyominoes
+
+def visualize_board(csv_path, output_dir="plots"):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    file_name = os.path.basename(csv_path)
+    match = re.search(r"experiment_iter(\d+)_rank(\d+)\.csv", file_name)
+    if not match:
+        return 
+
+    iteration, rank = match.group(1), match.group(2)
+
     try:
-        board = pd.read_csv(csv_path, header=None).values
+        metadata, poly_types, penalty_board, placed_list = parse_custom_csv(csv_path)
     except Exception as e:
-        print(f"Error reading CSV: {e}")
+        print(f"Error parsing CSV {file_name}: {e}")
         return
 
-    plt.figure(figsize=(8, 8))
+    height = metadata['height']
+    width = metadata['width']
+    poly_board = np.full((height, width), -1, dtype=int)
+
+    # Rekonstrukcja klocków na siatce na podstawie zrzutu genotypu
+    for poly in placed_list:
+        u_id = poly['unique_id']
+        t_id = poly['type_id']
+        orig_x = poly['x']
+        orig_y = poly['y']
+        rot_enum = poly['rotation']
+
+        if t_id not in poly_types:
+            continue
+
+        for pt_x, pt_y in poly_types[t_id]:
+            rot_x, rot_y = rotate_point(pt_x, pt_y, rot_enum)
+            final_x = orig_x + rot_x
+            final_y = orig_y + rot_y
+
+            if 0 <= final_x < width and 0 <= final_y < height:
+                poly_board[final_y, final_x] = u_id
+
+    fig, ax = plt.subplots(figsize=(9, 9))
+
+    # 1. Rysowanie tła (Wartości kar)
+    im_penalty = ax.imshow(penalty_board, cmap="YlGnBu", vmin=np.min(penalty_board), alpha=0.75, interpolation='nearest')
+
+    # 2. Rysowanie kształtów klocków
+    if len(placed_list) > 0:
+        max_u_id = max([p['unique_id'] for p in placed_list])
+        poly_cmap = plt.get_cmap('tab20', max_u_id + 2)
+        masked_poly = np.ma.masked_where(poly_board < 0, poly_board)
+        ax.imshow(masked_poly, cmap=poly_cmap, vmin=0, interpolation='nearest')
+
+        # 3. Wyznaczanie krawędzi (konturów klocków)
+        for y in range(height):
+            for x in range(width):
+                current_id = poly_board[y, x]
+                if current_id >= 0:
+                    if x + 1 < width and poly_board[y, x + 1] != current_id:
+                        ax.plot([x + 0.5, x + 0.5], [y - 0.5, y + 0.5], color='white', linewidth=3)
+                    if y + 1 < height and poly_board[y + 1, x] != current_id:
+                        ax.plot([x - 0.5, x + 0.5], [y + 0.5, y + 0.5], color='white', linewidth=3)
+                    if x == 0 or poly_board[y, x - 1] != current_id:
+                        ax.plot([x - 0.5, x - 0.5], [y - 0.5, y + 0.5], color='white', linewidth=3)
+                    if y == 0 or poly_board[y - 1, x] != current_id:
+                        ax.plot([x - 0.5, x + 0.5], [y - 0.5, y - 0.5], color='white', linewidth=3)
+
+    # Wypisanie kar na kafelkach
+    for y in range(height):
+        for x in range(width):
+            val = penalty_board[y, x]
+            text_color = "white" if val > np.max(penalty_board)*0.6 else "black"
+            ax.text(x, y, int(val), ha="center", va="center", color=text_color, fontsize=9, weight='bold')
+
+    ax.set_xticks(np.arange(-0.5, width, 1))
+    ax.set_yticks(np.arange(-0.5, height, 1))
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.grid(color='grey', linestyle=':', linewidth=0.5)
+
+    plt.title(f"Polyomino Board - Iteration {iteration} | Rank {rank}")
+    cbar = fig.colorbar(im_penalty, ax=ax, shrink=0.75)
+    cbar.set_label("Penalty Value", rotation=270, labelpad=15)
+
+    output_path = os.path.join(output_dir, f"plot_iter{iteration}_rank{rank}.png")
+    plt.savefig(output_path, bbox_inches='tight')
+    plt.close()
+
+def process_all_experiment_csvs(search_directory):
+    search_pattern = os.path.join(search_directory, "experiment_iter*_rank*.csv")
+    csv_files = glob.glob(search_pattern)
     
-    # Use 'tab20' for distinct colors or 'Set3'
-    # We use 'None' for interpolation to keep the blocks sharp
-    cmap = plt.get_cmap('tab20', np.max(board) + 2) 
-    
-    # Set the color for -1 (empty) to light grey
-    cmap.set_under('lightgrey')
+    if not csv_files:
+        print(f"No matching CSV files found in: {search_directory}")
+        return
 
-    # Display the board
-    # vmin=0 ensures that -1 is treated as "below" the range (showing lightgrey)
-    im = plt.imshow(board, cmap=cmap, vmin=0, interpolation='nearest')
+    print(f"Found {len(csv_files)} files to process...")
+    csv_files.sort(key=lambda f: [int(s) for s in re.findall(r'\d+', os.path.basename(f))])
 
-    # Add a grid for clarity
-    plt.xticks(np.arange(-0.5, board.shape[1], 1), [])
-    plt.yticks(np.arange(-0.5, board.shape[0], 1), [])
-    plt.grid(color='white', linestyle='-', linewidth=2)
-
-    plt.title(f"Polyomino Board Visualization ({board.shape[1]}x{board.shape[0]})")
-    plt.colorbar(im, ticks=range(int(np.max(board)) + 1), label="Polyomino ID")
-    plt.savefig(f"plots/plot_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}{name}.png")
+    for file_path in csv_files:
+        print(f"Processing: {os.path.basename(file_path)}")
+        visualize_board(file_path, output_dir="plots")
+    print("Visualization finished!")
 
 if __name__ == "__main__":
-    visualize_board('initial_best.csv', "_initial")
-    visualize_board('best_final.csv', "_final")
+    process_all_experiment_csvs(".")

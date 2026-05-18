@@ -1,113 +1,312 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
+#include <string.h>
 #include "engine.h"
 
-int main(void) {
-    srand(time(NULL));
+typedef struct {
+    Genotype *genotype;
+    State state;
+    int successful_mutations[6];
+    int failed_mutations[6];
+} Entity;
 
-    Input input = createSmallExampleInput();
+typedef struct {
+    int alterOneGeneMutation;
+    int removeOneGeneMutation;
+    int addOneGeneMutation;
+    int shiftOneGeneMutation;
+    int rotateOneGeneMutation;
+    int clearAreaMutation;
+} Params;
 
-    for(int x = 0; x < input.height && x < input.width; x++) {
-        input.penalties[x + x * input.width] = -1000;
+const char* MUTATION_NAMES[6] = {
+    "alterOneGeneMutation",
+    "removeOneGeneMutation",
+    "addOneGeneMutation",
+    "shiftOneGeneMutation",
+    "rotateOneGeneMutation",
+    "clearAreaMutation"
+};
+
+// Nowy format zapisu uwzględniający definicje polimino, pozycje oraz rotacje
+void customToCsv(Input *input, Genotype *genotype, const char *filename) {
+    if (!input || !genotype || !filename) {
+        printf("[CSV WARNING] Invalid pointers passed to customToCsv.\n");
+        return;
     }
 
-    Genotype **genotypes = malloc(100 * sizeof(Genotype *));
-    State *states = malloc(100 * sizeof(State));
-
-    for (int i = 0; i < 10; i++) {
-        State base_state = createState(&input);
-        genotypes[i] = createRandomStartingState(&input, &base_state);
-        states[i] = copyState(&input, &base_state); 
-        printf("Score: %d\n", states[i].score);
+    FILE *f = fopen(filename, "w");
+    if (!f) {
+        printf("Error opening file %s for writing.\n", filename);
+        return;
     }
 
+    // 1. Sekcja METADATA
+    fprintf(f, "[METADATA]\n");
+    fprintf(f, "width,%d\n", input->width);
+    fprintf(f, "height,%d\n", input->height);
 
-    int n_generations = 100; // liczba pokoleń
-    int n_mutations = 6;
-    double weights[6] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
-    double crossover_probability = 0.7;
-
-    for (int i = 0; i < 10 - 1; i++) {
-        for (int j = 0; j < 10 - i - 1; j++) {
-            if (states[j].score < states[j + 1].score) {
-                State temp_s = states[j]; states[j] = states[j + 1]; states[j + 1] = temp_s;
-                Genotype *temp_g = genotypes[j]; genotypes[j] = genotypes[j + 1]; genotypes[j + 1] = temp_g;
+    // 2. Sekcja POLYOMINO_TYPES
+    fprintf(f, "[POLYOMINO_TYPES]\n");
+    if (input->polyominoTypes != NULL) {
+        for (int t = 0; t < input->nPolyominoTypes; t++) {
+            fprintf(f, "%d,%d", t, input->polyominoTypes[t].nPoints);
+            if (input->polyominoTypes[t].points != NULL) {
+                for (int p = 0; p < input->polyominoTypes[t].nPoints; p++) {
+                    fprintf(f, ",%d,%d", input->polyominoTypes[t].points[p].x, input->polyominoTypes[t].points[p].y);
+                }
             }
+            fprintf(f, "\n");
         }
     }
-    toCsv(&input, &states[0], "initial_best.csv"); 
 
-    for (int k = 0; k < n_generations; k++) {
-        
-        // 3. Dla każdej z 10 instancji (z indeksów 0-9) tworzymy 9 mutacji (na indeksach 10-99)
-        int child_idx = 10;
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
+    // 3. Sekcja PENALTIES
+    fprintf(f, "[PENALTIES]\n");
+    if (input->penalties != NULL) {
+        for (int y = 0; y < input->height; y++) {
+            for (int x = 0; x < input->width; x++) {
+                fprintf(f, "%d", input->penalties[y * input->width + x]);
+                if (x < input->width - 1) fprintf(f, ",");
+            }
+            fprintf(f, "\n");
+        }
+    }
 
-                double r = (double)rand() / RAND_MAX;
-                if (r > crossover_probability) {
-                    // tylko mutacja
-                    genotypes[child_idx] = copyGenotype(&input, genotypes[i]);
-                } else {
-                    // krzyżowanie + mutacja
-                    int partner_idx = rand() % 10; 
-                    genotypes[child_idx] = crossover(&input, genotypes[i], genotypes[partner_idx]);
-                    // budujemy stan od zera, bo geny od dwóch rodziców mogą na siebie nachodzić
-                    states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
-                }
-                states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
-                int chosenMut = mutate(&input, &states[child_idx], genotypes[child_idx], weights, n_mutations);
-                freeState(&states[child_idx]);
-                states[child_idx] = buildStateFromGenotype(&input, genotypes[child_idx]);
+    // 4. Sekcja PLACED_POLYOMINOES
+    fprintf(f, "[PLACED_POLYOMINOES]\n");
+    
+    int total_cells = input->width * input->height;
+    int unique_id_counter = 0;
 
-                int parentScore = states[i].score;
+    if (genotype->genes != NULL) {
+        for (int i = 0; i < total_cells; i++) {
+            // Bezpieczne pominięcie pustych slotów genu
+            if (genotype->genes[i] == NULL) {
+                continue;
+            }
+
+            int type_id = genotype->genes[i]->polyominoIndex;
+            
+            // Walidacja poprawności indeksu typu klocka
+            if (type_id < 0 || type_id >= input->nPolyominoTypes) {
+                continue;
+            }
+
+            int origin_x = genotype->genes[i]->point.x;
+            int origin_y = genotype->genes[i]->point.y;
+            int rotation_enum_val = (int)genotype->genes[i]->rotation; 
+
+            fprintf(f, "%d,%d,%d,%d,%d\n", unique_id_counter, type_id, origin_x, origin_y, rotation_enum_val);
+            unique_id_counter++;
+        }
+    }
+
+    fclose(f);
+}
+
+void experiment(int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params) {
+    Input input = createSmallExampleInput();
+
+    int total_weight = params.alterOneGeneMutation +
+                       params.removeOneGeneMutation +
+                       params.addOneGeneMutation +
+                       params.shiftOneGeneMutation +
+                       params.rotateOneGeneMutation +
+                       params.clearAreaMutation;
+
+    // Global counters for all mutation attempts
+    int global_success[6] = {0, 0, 0, 0, 0, 0};
+    int global_fail[6] = {0, 0, 0, 0, 0, 0};
+
+    // Allocation of the parent population
+    Entity *population = malloc(starting_states * sizeof(Entity));
+
+    for (int i = 0; i < starting_states; i++) {
+        State base_state = createState(&input);
+        population[i].genotype = createRandomStartingState(&input, &base_state);
+        population[i].state = buildStateFromGenotype(&input, population[i].genotype);
+        freeState(&base_state);
+
+        // Clear mutation history for the initial population
+        for (int m = 0; m < 6; m++) {
+            population[i].successful_mutations[m] = 0;
+            population[i].failed_mutations[m] = 0;
+        }
+    }
+
+    int best_score = -999999;
+    int patience_counter = 0;
+
+    for (int iter = 0; iter < max_iterations; iter++) {
+        int total_children = starting_states * single_state_duplications;
+        Entity *children = malloc(total_children * sizeof(Entity));
+
+        int child_idx = 0;
+        for (int i = 0; i < starting_states; i++) {
+            for (int d = 0; d < single_state_duplications; d++) {
                 
-                if (states[child_idx].score > parentScore) {
-                    weights[chosenMut] += 1.0;
-                }
+                // Clone genotype using the engine
+                children[child_idx].genotype = copyGenotype(&input, population[i].genotype);
+                children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
                 
+                // Inherit mutation counters from the parent
+                for (int m = 0; m < 6; m++) {
+                    children[child_idx].successful_mutations[m] = population[i].successful_mutations[m];
+                    children[child_idx].failed_mutations[m] = population[i].failed_mutations[m];
+                }
+
+                // Mutate the child entity
+                for (int m = 0; m < mutations_per_iteration; m++) {
+                    int r = rand() % total_weight;
+                    int current_sum = 0;
+                    bool success = false;
+                    int chosen_mut = 0;
+
+                    if (r < (current_sum += params.alterOneGeneMutation)) {
+                        success = alterOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 0;
+                    } 
+                    else if (r < (current_sum += params.removeOneGeneMutation)) {
+                        success = removeOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 1;
+                    } 
+                    else if (r < (current_sum += params.addOneGeneMutation)) {
+                        success = addOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 2;
+                    } 
+                    else if (r < (current_sum += params.shiftOneGeneMutation)) {
+                        success = shiftOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 3;
+                    } 
+                    else if (r < (current_sum += params.rotateOneGeneMutation)) {
+                        success = rotateOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 4;
+                    } 
+                    else {
+                        success = clearAreaMutation(&input, &children[child_idx].state, children[child_idx].genotype);
+                        chosen_mut = 5;
+                    }
+
+                    // Collect mutation statistics
+                    if (success) {
+                        global_success[chosen_mut]++;
+                        children[child_idx].successful_mutations[chosen_mut]++;
+                    } else {
+                        global_fail[chosen_mut]++;
+                        children[child_idx].failed_mutations[chosen_mut]++;
+                    }
+
+                    freeState(&children[child_idx].state);
+                    children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
+                }
                 child_idx++;
             }
         }
-        
-        for (int m = 0; m < n_mutations; m++) {
-            weights[m] *= 0.99;
-            if (weights[m] < 1.0) weights[m] = 1.0;
-        }
 
-        // 4. Sortujemy całą setkę malejąco po score
-        for (int i = 0; i < 100 - 1; i++) {
-            for (int j = 0; j < 100 - i - 1; j++) {
-                if (states[j].score < states[j + 1].score) {
-                    State temp_state = states[j];
-                    states[j] = states[j + 1];
-                    states[j + 1] = temp_state;
+        // Combine parents and children into a single pool
+        int pool_size = starting_states + total_children;
+        Entity *pool = malloc(pool_size * sizeof(Entity));
 
-                    Genotype *temp_geno = genotypes[j];
-                    genotypes[j] = genotypes[j + 1];
-                    genotypes[j + 1] = temp_geno;
+        for (int i = 0; i < starting_states; i++) pool[i] = population[i];
+        for (int i = 0; i < total_children; i++) pool[starting_states + i] = children[i];
+
+        // Bubble sort pool descending by score
+        for (int i = 0; i < pool_size - 1; i++) {
+            for (int j = 0; j < pool_size - i - 1; j++) {
+                if (pool[j].state.score < pool[j + 1].state.score) {
+                    Entity temp = pool[j];
+                    pool[j] = pool[j + 1];
+                    pool[j + 1] = temp;
                 }
             }
         }
 
-        for (int i = 10; i < 100; i++) {
-            free(genotypes[i]->genes); 
-            free(genotypes[i]);
+        // Selection: Copy the best entities back to the main population
+        for (int i = 0; i < starting_states; i++) {
+            population[i] = pool[i];
         }
 
-        printf("Generation %d | Best score: %d\n", k, states[0].score);
+        // Free memory of rejected entities
+        for (int i = starting_states; i < pool_size; i++) {
+            free(pool[i].genotype->genes);
+            free(pool[i].genotype);
+            freeState(&pool[i].state);
+        }
+
+        free(children);
+        free(pool);
+
+        printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
+
+        // POPRAWKA: Wywołanie customToCsv przekazujące wskaźnik na cały obiekt Entity populacji
+        for (int i = 0; i < starting_states; i++) {
+            char csv_name[64];
+            sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
+            customToCsv(&input, population[i].genotype, csv_name);
+        }
+
+        // Check patience criteria
+        if (population[0].state.score > best_score) {
+            best_score = population[0].state.score;
+            patience_counter = 0; 
+        } else {
+            patience_counter++;
+        }
+
+        if (patience_counter >= patience) {
+            printf("Early stopping: no improvement for %d iterations.\n", patience);
+            break;
+        }
     }
 
-    printf("Best score: %d\n", states[0].score);
-    toCsv(&input, &states[0], "best_final.csv");
 
-    for (int i = 0; i < 10; i++) {
-        free(genotypes[i]->genes);
-        free(genotypes[i]);
+    // --- MUTATION STATISTICS SUMMARY ---
+    int selected_success[6] = {0, 0, 0, 0, 0, 0};
+    int selected_fail[6] = {0, 0, 0, 0, 0, 0};
+
+    for (int i = 0; i < starting_states; i++) {
+        for (int m = 0; m < 6; m++) {
+            selected_success[m] += population[i].successful_mutations[m];
+            selected_fail[m] += population[i].failed_mutations[m];
+        }
     }
-    free(genotypes);
-    free(states);
-    
+
+    printf("\n======================== MUTATION STATISTICS ========================\n");
+    printf("%-25s | %-16s | %-16s\n", "Mutation Name", "ALL ATTEMPTS", "SURVIVED SELECTION");
+    printf("%-25s | %-7s / %-6s | %-7s / %-6s\n", "", "Success", "Failed", "Success", "Failed");
+    printf("--------------------------------------------------------------------\n");
+    for (int m = 0; m < 6; m++) {
+        printf("%-25s | %-7d / %-6d | %-7d / %-6d\n", 
+               MUTATION_NAMES[m], 
+               global_success[m], global_fail[m], 
+               selected_success[m], selected_fail[m]);
+    }
+    printf("====================================================================\n\n");
+
+    // Final clean up
+    for (int i = 0; i < starting_states; i++) {
+        free(population[i].genotype->genes);
+        free(population[i].genotype);
+        freeState(&population[i].state);
+    }
+    free(population);
+}
+
+int main(void) {
+    srand((unsigned int)time(NULL));
+
+    Params test_params;
+    test_params.alterOneGeneMutation  = 10;
+    test_params.removeOneGeneMutation = 100;
+    test_params.addOneGeneMutation    = 200;
+    test_params.shiftOneGeneMutation  = 50;
+    test_params.rotateOneGeneMutation = 50;
+    test_params.clearAreaMutation     = 5;
+
+    printf("Starting experiment with isolated entity tracking...\n");
+    experiment(10, 5, 1000, 10, 10, test_params);
+
     return 0;
 }
