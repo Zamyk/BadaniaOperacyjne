@@ -111,7 +111,7 @@ Input createSmallExampleInput() {
     // penalties = 1 for each cell (10x10 = 100 cells)
     input.penalties = malloc(100 * sizeof(int));
     for (int i = 0; i < 100; i++) {
-        input.penalties[i] = 1;
+        input.penalties[i] = 0;
     }
 
     return input;

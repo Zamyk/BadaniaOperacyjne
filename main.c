@@ -136,6 +136,12 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
         }
     }
 
+    for (int i = 0; i < starting_states; i++) {
+        char csv_name[64];
+        sprintf(csv_name, "experiment_iter%d_rank%d.csv", 999999, i);
+        customToCsv(&input, population[i].genotype, csv_name);
+    }
+
     int best_score = -999999;
     int patience_counter = 0;
 
@@ -270,10 +276,12 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
         printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
 
         // POPRAWKA: Wywołanie customToCsv przekazujące wskaźnik na cały obiekt Entity populacji
-        for (int i = 0; i < starting_states; i++) {
-            char csv_name[64];
-            sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
-            customToCsv(&input, population[i].genotype, csv_name);
+        if(iter == 0 || iter == max_iterations-1){
+            for (int i = 0; i < starting_states; i++) {
+                char csv_name[64];
+                sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
+                customToCsv(&input, population[i].genotype, csv_name);
+            }
         }
 
         // Check patience criteria
@@ -286,6 +294,11 @@ void experiment(int starting_states, int single_state_duplications, int max_iter
 
         if (patience_counter >= patience) {
             printf("Early stopping: no improvement for %d iterations.\n", patience);
+            for (int i = 0; i < starting_states; i++) {
+                char csv_name[64];
+                sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
+                customToCsv(&input, population[i].genotype, csv_name);
+            }
             break;
         }
     }
@@ -329,13 +342,13 @@ int main(void) {
     Params test_params;
     test_params.alterOneGeneMutation  = 10;
     test_params.removeOneGeneMutation = 100;
-    test_params.addOneGeneMutation    = 200;
+    test_params.addOneGeneMutation    = 100;
     test_params.shiftOneGeneMutation  = 50;
     test_params.rotateOneGeneMutation = 50;
-    test_params.clearAreaMutation     = 5;
+    test_params.clearAreaMutation     = 100;
 
     printf("Starting experiment with isolated entity tracking...\n");
-    experiment(10, 5, 1000, 10, 10, test_params);
+    experiment(10, 100, 1000, 20, 10, test_params);
 
     return 0;
 }
