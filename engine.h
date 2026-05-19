@@ -41,6 +41,9 @@ typedef struct {
 } Input;
 
 Input createSmallExampleInput();
+Input createTetrisExampleInput();
+Input createObstacleExampleInput();
+Input createIrregularExampleInput();
 void freeInput(Input input);
 
 

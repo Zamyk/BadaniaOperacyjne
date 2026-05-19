@@ -127,6 +127,163 @@ void freeInput(Input input) {
     free(input.penalties);
 }
 
+// --- Additional Inputs ---
+
+Input createTetrisExampleInput() {
+    Input input;
+    input.width  = 15;
+    input.height = 15;
+    input.nPolyominoTypes = 4;
+
+    input.polyominoTypes = malloc(4 * sizeof(Polyomino));
+
+    // I-block (1x4)
+    input.polyominoTypes[0].nPoints = 4;
+    input.polyominoTypes[0].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){0, 1};
+    input.polyominoTypes[0].points[2] = (Point){0, 2};
+    input.polyominoTypes[0].points[3] = (Point){0, 3};
+
+    // O-block (2x2)
+    input.polyominoTypes[1].nPoints = 4;
+    input.polyominoTypes[1].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){1, 0};
+    input.polyominoTypes[1].points[2] = (Point){0, 1};
+    input.polyominoTypes[1].points[3] = (Point){1, 1};
+
+    // L-block
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){0, 1};
+    input.polyominoTypes[2].points[2] = (Point){0, 2};
+    input.polyominoTypes[2].points[3] = (Point){1, 2};
+
+    // 1x1 dot
+    input.polyominoTypes[3].nPoints = 1;
+    input.polyominoTypes[3].points  = malloc(1 * sizeof(Point));
+    input.polyominoTypes[3].points[0] = (Point){0, 0};
+
+    input.values = malloc(4 * sizeof(int));
+    input.values[0] = 50; 
+    input.values[1] = 40; 
+    input.values[2] = 45; 
+    input.values[3] = 5;  
+
+    input.available = malloc(4 * sizeof(int));
+    input.available[0] = 20;
+    input.available[1] = 20;
+    input.available[2] = 20;
+    input.available[3] = 30;
+
+    input.penalties = calloc(15 * 15, sizeof(int));
+
+    return input;
+}
+
+Input createObstacleExampleInput() {
+    Input input;
+    input.width  = 12;
+    input.height = 12;
+    input.nPolyominoTypes = 2;
+
+    input.polyominoTypes = malloc(2 * sizeof(Polyomino));
+
+    // Prostokąt 2x3
+    input.polyominoTypes[0].nPoints = 6;
+    input.polyominoTypes[0].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){0, 1};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+    input.polyominoTypes[0].points[4] = (Point){0, 2};
+    input.polyominoTypes[0].points[5] = (Point){1, 2};
+
+    // Linia 1x3
+    input.polyominoTypes[1].nPoints = 3;
+    input.polyominoTypes[1].points  = malloc(3 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+
+    input.values = malloc(2 * sizeof(int));
+    input.values[0] = 100;
+    input.values[1] = 40;
+
+    input.available = malloc(2 * sizeof(int));
+    input.available[0] = 20;
+    input.available[1] = 30;
+
+    input.penalties = malloc(12 * 12 * sizeof(int));
+    for (int i = 0; i < 12 * 12; i++) {
+        input.penalties[i] = 1; 
+    }
+    
+    // Przeszkody z dużą ujemną karą, zniechęcające do kładzenia klocków
+    for (int y = 4; y <= 7; y++) {
+        for (int x = 4; x <= 7; x++) {
+            input.penalties[y * 12 + x] = -1000;
+        }
+    }
+
+    return input;
+}
+
+Input createIrregularExampleInput() {
+    Input input;
+    input.width  = 8;
+    input.height = 8;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // U-block
+    input.polyominoTypes[0].nPoints = 5;
+    input.polyominoTypes[0].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){2, 0};
+    input.polyominoTypes[0].points[2] = (Point){0, 1};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+    input.polyominoTypes[0].points[4] = (Point){2, 1};
+
+    // Plus-block
+    input.polyominoTypes[1].nPoints = 5;
+    input.polyominoTypes[1].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){1, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 1};
+    input.polyominoTypes[1].points[3] = (Point){2, 1};
+    input.polyominoTypes[1].points[4] = (Point){1, 2};
+
+    // Corner-block
+    input.polyominoTypes[2].nPoints = 3;
+    input.polyominoTypes[2].points  = malloc(3 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){0, 1};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 80;
+    input.values[1] = 90;
+    input.values[2] = 40;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 10;
+    input.available[1] = 10;
+    input.available[2] = 15;
+
+    input.penalties = malloc(8 * 8 * sizeof(int));
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            input.penalties[y * 8 + x] = (x + y) % 3; 
+        }
+    }
+
+    return input;
+}
+
 // --- State ---
 
 State createState(const Input* input) {
@@ -136,9 +293,9 @@ State createState(const Input* input) {
         state.board[i] = -1;
     }
     
-    state.used = malloc(input->nPolyominoTypes * sizeof(int));
+    state.used = calloc(input->nPolyominoTypes, sizeof(int));
     state.score = 0;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < input->width * input->height; i++) {
         state.score -= input->penalties[i]; 
     }
     return state;
