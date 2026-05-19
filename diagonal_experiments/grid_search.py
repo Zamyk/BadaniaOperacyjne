@@ -6,7 +6,6 @@ import statistics
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Dodajemy katalog nadrzędny, aby zaimportować parser.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from parser import ExperimentResult
 
@@ -88,7 +87,6 @@ def main():
         "patience": 50
     }
     
-    # Najpierw ewaluacja parametrów domyślnych
     default_params = base_params.copy()
     default_params.update({
         "starting_states": 10,
@@ -108,7 +106,6 @@ def main():
     print(f"Średni wynik domyślny: {default_score:.2f}")
     print("========================================\n")
     
-    # Parametry do grid searcha
     param_grid = {
         "starting_states": [10],
         "duplications": [10],
