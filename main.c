@@ -106,7 +106,7 @@ void customToCsv(Input *input, Genotype *genotype, const char *filename) {
     fclose(f);
 }
 
-void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params, const char* output_json) {
+void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params, const char* output_json, int silent) {
 
     int total_weight = params.alterOneGeneMutation +
                        params.removeOneGeneMutation +
@@ -277,10 +277,10 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         iteration_scores[iter] = population[0].state.score;
         actual_iterations++;
 
-        printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
+        if (!silent) printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
 
         // POPRAWKA: Wywołanie customToCsv przekazujące wskaźnik na cały obiekt Entity populacji
-        if(iter == 0 || iter == max_iterations-1){
+        if(!silent && (iter == 0 || iter == max_iterations-1)){
             for (int i = 0; i < starting_states; i++) {
                 char csv_name[64];
                 sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
@@ -298,12 +298,14 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         }
 
         if (patience_counter >= patience) {
-            printf("Early stopping: no improvement for %d iterations.\n", patience);
-            for (int i = 0; i < starting_states; i++) {
-                char csv_name[64];
-                sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
-                customToCsv(&input, population[i].genotype, csv_name);
-                break;
+            if (!silent) {
+                printf("Early stopping: no improvement for %d iterations.\n", patience);
+                for (int i = 0; i < starting_states; i++) {
+                    char csv_name[64];
+                    sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
+                    customToCsv(&input, population[i].genotype, csv_name);
+                    break;
+                }
             }
             break;
         }
@@ -319,19 +321,21 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         selected_fail[m] += population[0].failed_mutations[m];
     }
 
-    printf("\n======================== MUTATION STATISTICS ========================\n");
-    printf("%-25s | %-16s | %-16s\n", "Mutation Name", "ALL ATTEMPTS", "SURVIVED SELECTION");
-    printf("%-25s | %-7s / %-6s | %-7s / %-6s\n", "", "Success", "Failed", "Success", "Failed");
-    printf("--------------------------------------------------------------------\n");
-    //int all_mut=0;
-    for (int m = 0; m < 6; m++) {
-        //all_mut = all_mut + global_success[m] + global_fail[m];
-        printf("%-25s | %-7d / %-6d | %-7d / %-6d\n", 
-               MUTATION_NAMES[m], 
-               global_success[m], global_fail[m], 
-               selected_success[m], selected_fail[m]);
+    if (!silent) {
+        printf("\n======================== MUTATION STATISTICS ========================\n");
+        printf("%-25s | %-16s | %-16s\n", "Mutation Name", "ALL ATTEMPTS", "SURVIVED SELECTION");
+        printf("%-25s | %-7s / %-6s | %-7s / %-6s\n", "", "Success", "Failed", "Success", "Failed");
+        printf("--------------------------------------------------------------------\n");
+        //int all_mut=0;
+        for (int m = 0; m < 6; m++) {
+            //all_mut = all_mut + global_success[m] + global_fail[m];
+            printf("%-25s | %-7d / %-6d | %-7d / %-6d\n", 
+                MUTATION_NAMES[m], 
+                global_success[m], global_fail[m], 
+                selected_success[m], selected_fail[m]);
+        }
+        printf("====================================================================\n\n");
     }
-    printf("====================================================================\n\n");
     //printf("===%d===", all_mut);
 
     if (output_json != NULL && strlen(output_json) > 0) {
@@ -369,7 +373,7 @@ void experiment(Input input, int starting_states, int single_state_duplications,
             fprintf(f, "  }\n");
             fprintf(f, "}\n");
             fclose(f);
-            printf("Saved JSON results to %s\n", output_json);
+            if (!silent) printf("Saved JSON results to %s\n", output_json);
         }
     }
     
@@ -406,6 +410,7 @@ int main(int argc, char* argv[]) {
     int mutations_per_iteration = 40;
     int patience = 10;
     char output_json[512] = "";
+    int silent = 0;
 
     if (argc > 1) {
         for (int i = 1; i < argc; i++) {
@@ -441,6 +446,7 @@ int main(int argc, char* argv[]) {
                 strncpy(output_json, argv[i], sizeof(output_json) - 1);
                 output_json[sizeof(output_json) - 1] = '\0';
             }
+            else if (strcmp(argv[i], "--silent") == 0) silent = 1;
         }
     } else {
         printf("--- Problem Configuration ---\n");
@@ -474,11 +480,11 @@ int main(int argc, char* argv[]) {
         if (fgets(buf, sizeof(buf), stdin) && buf[0] != '\n') patience = atoi(buf);
     }
 
-    printf("\nGenerating Input with width=%d, height=%d, preset=%d, penalty=%d...\n", width, height, preset, penalty);
+    if (!silent) printf("\nGenerating Input with width=%d, height=%d, preset=%d, penalty=%d...\n", width, height, preset, penalty);
     Input input = createInput(width, height, preset, penalty);
 
-    printf("Starting experiment with isolated entity tracking...\n");
-    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params, output_json);
+    if (!silent) printf("Starting experiment with isolated entity tracking...\n");
+    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params, output_json, silent);
 
     freeInput(input);
     return 0;
