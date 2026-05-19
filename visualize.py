@@ -65,7 +65,7 @@ def parse_custom_csv(csv_path):
                     'type_id': int(tokens[1]),
                     'x': int(tokens[2]),
                     'y': int(tokens[3]),
-                    'rotation': int(tokens[4]) # Wartość całkowita enuma z C
+                    'rotation': int(tokens[4])
                 })
                 
     return metadata, poly_types, np.array(penalties), placed_polyominoes
@@ -91,7 +91,6 @@ def visualize_board(csv_path, output_dir="plots"):
     width = metadata['width']
     poly_board = np.full((height, width), -1, dtype=int)
 
-    # Rekonstrukcja klocków na siatce na podstawie zrzutu genotypu
     for poly in placed_list:
         u_id = poly['unique_id']
         t_id = poly['type_id']
@@ -112,18 +111,12 @@ def visualize_board(csv_path, output_dir="plots"):
 
     fig, ax = plt.subplots(figsize=(9, 9))
 
-    # 1. Rysowanie tła (Wartości kar)
-    # Tło wyłączone, aby niezajęte klocki były czarne
-    # im_penalty = ax.imshow(penalty_board, cmap="YlGnBu", vmin=np.min(penalty_board), alpha=0.75, interpolation='nearest')
-
-    # 2. Rysowanie kształtów klocków
     if len(placed_list) > 0:
         max_u_id = max([p['unique_id'] for p in placed_list])
         poly_cmap = plt.get_cmap('tab20', max_u_id + 2)
         masked_poly = np.ma.masked_where(poly_board < 0, poly_board)
         ax.imshow(masked_poly, cmap=poly_cmap, vmin=0, interpolation='nearest')
 
-        # 3. Wyznaczanie krawędzi (konturów klocków)
         for y in range(height):
             for x in range(width):
                 current_id = poly_board[y, x]
@@ -137,7 +130,6 @@ def visualize_board(csv_path, output_dir="plots"):
                     if y == 0 or poly_board[y - 1, x] != current_id:
                         ax.plot([x - 0.5, x + 0.5], [y - 0.5, y - 0.5], color='white', linewidth=3)
 
-    # Wypisanie kar na kafelkach
     for y in range(height):
         for x in range(width):
             val = penalty_board[y, x]
@@ -151,10 +143,7 @@ def visualize_board(csv_path, output_dir="plots"):
     ax.grid(color='grey', linestyle=':', linewidth=0.5)
 
     plt.title(f"Polyomino Board - Iteration {iteration} | Rank {rank}")
-    # Kolorbar ukryty, bo wyłączyliśmy mapę cieplną tła
-    # cbar = fig.colorbar(im_penalty, ax=ax, shrink=0.75)
-    # cbar.set_label("Penalty Value", rotation=270, labelpad=15)
-
+   
     output_path = os.path.join(output_dir, f"plot_iter{iteration}_rank{rank}.png")
     plt.savefig(output_path, bbox_inches='tight')
     plt.close()
