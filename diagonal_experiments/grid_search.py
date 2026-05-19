@@ -109,16 +109,31 @@ def main():
     print("========================================\n")
     
     # Parametry do grid searcha
-    param_grid = {
-        "starting_states": [10, 100],
-        "duplications": [10, 50],
-        "mutations": [20, 40],
-        "mut_alter": [50, 100],
-        "mut_remove": [50, 100],
-        "mut_add": [50, 100],
-        "mut_shift": [50, 100],
-        "mut_rotate": [50, 100],
-        "mut_clear": [50, 100]
+    # param_grid = {
+    #     # "starting_states": [10, 100],
+    #     # "duplications": [10, 50],
+    #     "starting_states": [20],
+    #     "duplications": [10],
+    #     "mutations": [10, 30],
+    #     "mut_alter": [50, 100],
+    #     "mut_remove": [50, 100],
+    #     "mut_add": [50, 100],
+    #     "mut_shift": [50, 100],
+    #     "mut_rotate": [50, 100],
+    #     "mut_clear": [50, 100]
+    # }
+
+    param_grid = {        
+        "starting_states": [1, 10, 20],
+        "duplications": [10],
+        "mutations": [1, 2, 3, 4, 5],
+        "mut_alter": [50],
+        "mut_remove": [50],
+        "mut_add": [150],
+        "mut_shift": [50],
+        "mut_rotate": [300],
+        "mut_clear": [50],
+        "patience": [80]
     }
     
     best_score, best_config = grid_search(base_params, param_grid, num_runs=10)
