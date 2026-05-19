@@ -5,8 +5,37 @@ import itertools
 import statistics
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import csv
+import os
 
-# Dodajemy katalog nadrzędny, aby zaimportować parser.py
+FILENAME = "data_logs.csv"
+
+def log_data(value1, value2, value3, value4):
+    """Appends 4 values to the CSV file. Creates the file if it doesn't exist."""
+    file_exists = os.path.isfile(FILENAME)
+    
+    with open(FILENAME, mode="a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(["score", "width", "mut_remove", "mut_clear"])
+            
+        writer.writerow([value1, value2, value3, value4])
+    print("Data logged successfully.")
+
+def read_logs():
+    """Reads and prints all data from the CSV file."""
+    if not os.path.isfile(FILENAME):
+        print("No log file found.")
+        return
+
+    with open(FILENAME, mode="r", encoding="utf-8") as file:
+        reader = csv.reader(file)
+        print("\n--- Reading Log File ---")
+        for row in reader:
+            print(row)
+        print("------------------------\n")
+
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from parser import ExperimentResult
 
@@ -25,7 +54,7 @@ def run_experiment_single(params, output_json):
         return res
     return None
 
-def evaluate_params(params, num_runs=10):
+def evaluate_params(params, num_runs=100):
     def single_run(_):
         json_path = f"/tmp/grid_result_{uuid.uuid4().hex}.json"
         res = run_experiment_single(params, json_path)
@@ -62,8 +91,13 @@ def grid_search(base_params, param_grid, num_runs=10):
             
         combo_str = ", ".join(f"{k}={v}" for k, v in zip(keys, combo))
         print(f"[{idx}/{total}] Testowanie: {combo_str}")
+
+        denominator = current_params["width"] * current_params["height"]
         
-        avg_score = evaluate_params(current_params, num_runs=num_runs)
+        avg_score = evaluate_params(current_params, num_runs=num_runs) / denominator
+
+        log_data(avg_score, current_params["width"], current_params["mut_remove"], current_params["mut_clear"])
+
         print(f"   Średni wynik z {num_runs} uruchomień: {avg_score:.2f}")
         
         if avg_score > best_score:
@@ -80,10 +114,6 @@ def main():
         sys.exit(1)
 
     base_params = {
-        "width": 15,
-        "height": 15,
-        "preset": "tetris",
-        "penalty": "bad_diagonal",
         "max_iterations": 1000,
         "patience": 50
     }
@@ -107,18 +137,22 @@ def main():
     default_score = evaluate_params(default_params, num_runs=10)
     print(f"Średni wynik domyślny: {default_score:.2f}")
     print("========================================\n")
-    
+
     # Parametry do grid searcha
     param_grid = {
+        "width": [2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        "height": [20],
+        "preset": ["tetris"],
+        "penalty": ["uniform"],
         "starting_states": [10],
         "duplications": [10],
-        "mutations": [20, 40],
-        "mut_alter": [50, 100],
-        "mut_remove": [50, 100],
-        "mut_add": [50, 100],
-        "mut_shift": [50, 100],
-        "mut_rotate": [50, 100],
-        "mut_clear": [50, 100]
+        "mutations": [10],
+        "mut_alter": [10],
+        "mut_remove": [5, 10, 15, 20],
+        "mut_add": [10],
+        "mut_shift": [10],
+        "mut_rotate": [10],
+        "mut_clear": [5, 10, 15, 20]
     }
     
     best_score, best_config = grid_search(base_params, param_grid, num_runs=10)
