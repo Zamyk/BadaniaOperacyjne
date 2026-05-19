@@ -106,7 +106,7 @@ void customToCsv(Input *input, Genotype *genotype, const char *filename) {
     fclose(f);
 }
 
-void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params) {
+void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params, const char* output_json) {
 
     int total_weight = params.alterOneGeneMutation +
                        params.removeOneGeneMutation +
@@ -143,6 +143,8 @@ void experiment(Input input, int starting_states, int single_state_duplications,
 
     int best_score = -999999;
     int patience_counter = 0;
+    int* iteration_scores = malloc(max_iterations * sizeof(int));
+    int actual_iterations = 0;
 
     for (int iter = 0; iter < max_iterations; iter++) {
         int total_children = starting_states * single_state_duplications;
@@ -272,6 +274,9 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         free(children);
         free(pool);
 
+        iteration_scores[iter] = population[0].state.score;
+        actual_iterations++;
+
         printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
 
         // POPRAWKA: Wywołanie customToCsv przekazujące wskaźnik na cały obiekt Entity populacji
@@ -328,6 +333,48 @@ void experiment(Input input, int starting_states, int single_state_duplications,
     }
     printf("====================================================================\n\n");
     //printf("===%d===", all_mut);
+
+    if (output_json != NULL && strlen(output_json) > 0) {
+        FILE* f = fopen(output_json, "w");
+        if (f) {
+            fprintf(f, "{\n");
+            fprintf(f, "  \"config\": {\n");
+            fprintf(f, "    \"width\": %d,\n", input.width);
+            fprintf(f, "    \"height\": %d,\n", input.height);
+            fprintf(f, "    \"starting_states\": %d,\n", starting_states);
+            fprintf(f, "    \"single_state_duplications\": %d,\n", single_state_duplications);
+            fprintf(f, "    \"max_iterations\": %d,\n", max_iterations);
+            fprintf(f, "    \"mutations_per_iteration\": %d,\n", mutations_per_iteration);
+            fprintf(f, "    \"patience\": %d,\n", patience);
+            fprintf(f, "    \"mut_alter\": %d,\n", params.alterOneGeneMutation);
+            fprintf(f, "    \"mut_remove\": %d,\n", params.removeOneGeneMutation);
+            fprintf(f, "    \"mut_add\": %d,\n", params.addOneGeneMutation);
+            fprintf(f, "    \"mut_shift\": %d,\n", params.shiftOneGeneMutation);
+            fprintf(f, "    \"mut_rotate\": %d,\n", params.rotateOneGeneMutation);
+            fprintf(f, "    \"mut_clear\": %d\n", params.clearAreaMutation);
+            fprintf(f, "  },\n");
+            fprintf(f, "  \"scores\": [");
+            for (int i = 0; i < actual_iterations; i++) {
+                fprintf(f, "%d", iteration_scores[i]);
+                if (i < actual_iterations - 1) fprintf(f, ", ");
+            }
+            fprintf(f, "],\n");
+            fprintf(f, "  \"mutation_stats\": {\n");
+            for (int m = 0; m < 6; m++) {
+                fprintf(f, "    \"%s\": {\"success\": %d, \"fail\": %d, \"selected_success\": %d, \"selected_fail\": %d}", 
+                        MUTATION_NAMES[m], global_success[m], global_fail[m], selected_success[m], selected_fail[m]);
+                if (m < 5) fprintf(f, ",\n");
+                else fprintf(f, "\n");
+            }
+            fprintf(f, "  }\n");
+            fprintf(f, "}\n");
+            fclose(f);
+            printf("Saved JSON results to %s\n", output_json);
+        }
+    }
+    
+    free(iteration_scores);
+
     // Final clean up
     for (int i = 0; i < starting_states; i++) {
         free(population[i].genotype->genes);
@@ -358,6 +405,7 @@ int main(int argc, char* argv[]) {
     int max_iterations = 1000;
     int mutations_per_iteration = 40;
     int patience = 10;
+    char output_json[512] = "";
 
     if (argc > 1) {
         for (int i = 1; i < argc; i++) {
@@ -382,6 +430,17 @@ int main(int argc, char* argv[]) {
             else if (strcmp(argv[i], "--max_iterations") == 0 && i + 1 < argc) max_iterations = atoi(argv[++i]);
             else if (strcmp(argv[i], "--mutations") == 0 && i + 1 < argc) mutations_per_iteration = atoi(argv[++i]);
             else if (strcmp(argv[i], "--patience") == 0 && i + 1 < argc) patience = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_alter") == 0 && i + 1 < argc) test_params.alterOneGeneMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_remove") == 0 && i + 1 < argc) test_params.removeOneGeneMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_add") == 0 && i + 1 < argc) test_params.addOneGeneMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_shift") == 0 && i + 1 < argc) test_params.shiftOneGeneMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_rotate") == 0 && i + 1 < argc) test_params.rotateOneGeneMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--mut_clear") == 0 && i + 1 < argc) test_params.clearAreaMutation = atoi(argv[++i]);
+            else if (strcmp(argv[i], "--output_json") == 0 && i + 1 < argc) {
+                i++;
+                strncpy(output_json, argv[i], sizeof(output_json) - 1);
+                output_json[sizeof(output_json) - 1] = '\0';
+            }
         }
     } else {
         printf("--- Problem Configuration ---\n");
@@ -419,7 +478,7 @@ int main(int argc, char* argv[]) {
     Input input = createInput(width, height, preset, penalty);
 
     printf("Starting experiment with isolated entity tracking...\n");
-    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params);
+    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params, output_json);
 
     freeInput(input);
     return 0;
