@@ -284,6 +284,230 @@ Input createIrregularExampleInput() {
     return input;
 }
 
+Input createLargeExampleInput() {
+    Input input;
+    input.width  = 100;
+    input.height = 100;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // Tlarge-block
+    //    X
+    //    X
+    //    X
+    // XXXXXXX
+    input.polyominoTypes[0].nPoints = 10;
+    input.polyominoTypes[0].points  = malloc(10 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+    input.polyominoTypes[0].points[6] = (Point){6, 0};
+    input.polyominoTypes[0].points[7] = (Point){3, 1};
+    input.polyominoTypes[0].points[8] = (Point){3, 2};
+    input.polyominoTypes[0].points[9] = (Point){3, 3};
+
+
+    // Llarge-block
+    // X
+    // X
+    // X
+    // X
+    // X
+    // X
+    // XXXX
+    input.polyominoTypes[1].nPoints = 10;
+    input.polyominoTypes[1].points  = malloc(10 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){0, 3};
+    input.polyominoTypes[1].points[4] = (Point){0, 4};
+    input.polyominoTypes[1].points[5] = (Point){0, 5};
+    input.polyominoTypes[1].points[6] = (Point){0, 6};
+    input.polyominoTypes[1].points[7] = (Point){1, 0};
+    input.polyominoTypes[1].points[8] = (Point){2, 0};
+    input.polyominoTypes[1].points[9] = (Point){3, 0};
+    
+
+
+
+    // Slarge-block
+    //    XXXX
+    //    X
+    //    X
+    // XXXX
+    input.polyominoTypes[2].nPoints = 10;
+    input.polyominoTypes[2].points  = malloc(10 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){2, 0};
+    input.polyominoTypes[2].points[3] = (Point){3, 0};
+    input.polyominoTypes[2].points[4] = (Point){3, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 2};
+    input.polyominoTypes[2].points[6] = (Point){3, 3};
+    input.polyominoTypes[2].points[7] = (Point){4, 3};
+    input.polyominoTypes[2].points[8] = (Point){5, 3};
+    input.polyominoTypes[2].points[9] = (Point){6, 3};
+    
+
+    // values = 0 for all types
+    input.values = calloc(3, sizeof(int));
+    // testowałem wartości dla klocków
+    // input.values = malloc(3 * sizeof(int));
+    // input.values[0] = 10; // T-block wart 10
+    // input.values[1] = 10; // L-block wart 10
+    // input.values[2] = 10; // S-block wart 10
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 1000;
+    input.available[1] = 1000;
+    input.available[2] = 1000;
+
+    // penalties = 1 for each cell (10x10 = 100 cells)
+    input.penalties = malloc(10000 * sizeof(int));
+    for (int i = 0; i < 10000; i++) {
+        input.penalties[i] = 1;
+    }
+
+    return input;
+}
+
+
+Input createWeightedExampleInput() {
+    Input input;
+    input.width  = 10;
+    input.height = 10;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // T-block
+    //  X
+    // XXX
+    input.polyominoTypes[0].nPoints = 4;
+    input.polyominoTypes[0].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+
+    // L-block
+    // X
+    // X
+    // XX
+    input.polyominoTypes[1].nPoints = 4;
+    input.polyominoTypes[1].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){1, 2};
+
+    // S-block
+    //  XX
+    // XX
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){1, 1};
+    input.polyominoTypes[2].points[3] = (Point){2, 1};
+
+    // values = 0 for all types
+    input.values = calloc(3, sizeof(int));
+    // testowałem wartości dla klocków
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 20; // T-block wart 10
+    input.values[1] = 30; // L-block wart 10
+    input.values[2] = 10; // S-block wart 10
+
+    // available = 5 of each
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 80;
+    input.available[1] = 80;
+    input.available[2] = 80;
+
+    // penalties = 1 for each cell (10x10 = 100 cells)
+    input.penalties = malloc(100 * sizeof(int));
+    for (int i = 0; i < 100; i++) {
+        input.penalties[i] = 1;
+    }
+
+    return input;
+}
+
+
+Input createSimpleExampleInput() {
+    Input input;
+    input.width  = 10;
+    input.height = 10;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // line-block
+    //  XXXXXX
+    input.polyominoTypes[0].nPoints = 2;
+    input.polyominoTypes[0].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+
+
+    // XXXX-block
+    // XXX
+    // XXX
+    input.polyominoTypes[1].nPoints = 6;
+    input.polyominoTypes[1].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 0};
+    input.polyominoTypes[1].points[3] = (Point){1, 1};
+    input.polyominoTypes[1].points[4] = (Point){2, 0};
+    input.polyominoTypes[1].points[5] = (Point){2, 1};
+
+    // XX-block
+    // XXXX
+    // XX
+    input.polyominoTypes[2].nPoints = 6;
+    input.polyominoTypes[2].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){0, 1};
+    input.polyominoTypes[2].points[3] = (Point){1, 1};
+    input.polyominoTypes[2].points[4] = (Point){2, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 1};
+
+
+    // values = 0 for all types
+    input.values = calloc(3, sizeof(int));
+    // testowałem wartości dla klocków
+    // input.values = malloc(3 * sizeof(int));
+    // input.values[0] = 20; // T-block wart 10
+    // input.values[1] = 30; // L-block wart 10
+    // input.values[2] = 10; // S-block wart 10
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 120;
+    input.available[1] = 120;
+    input.available[2] = 120;
+
+    // penalties = 1 for each cell (10x10 = 100 cells)
+    input.penalties = malloc(100 * sizeof(int));
+    for (int i = 0; i < 100; i++) {
+        input.penalties[i] = 1;
+    }
+
+    return input;
+}
+
+
 // --- State ---
 
 State createState(const Input* input) {

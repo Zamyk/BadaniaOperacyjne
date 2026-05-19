@@ -44,6 +44,9 @@ Input createSmallExampleInput();
 Input createTetrisExampleInput();
 Input createObstacleExampleInput();
 Input createIrregularExampleInput();
+Input createLargeExampleInput();
+Input createWeightedExampleInput();
+Input createSimpleExampleInput();
 void freeInput(Input input);
 
 
