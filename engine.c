@@ -84,6 +84,17 @@ static void applyPenalty(Input* input, PenaltyType type) {
                     if ((x + y) % 2 == 0) penalty = 5;
                     else penalty = -5;
                     break;
+                case PENALTY_OBSTACLE:
+                    if (x >= input->width/2 - 2 && x <= input->width/2 + 1 &&
+                        y >= input->height/2 - 2 && y <= input->height/2 + 1) {
+                        penalty = -1000;
+                    } else {
+                        penalty = 10;
+                    }
+                    break;
+                case PENALTY_MODULO:
+                    penalty = -((x * 3 + y * 7) % 5) * 5;
+                    break;
             }
             input->penalties[idx] = penalty;
         }
@@ -210,6 +221,84 @@ static Input createRandomPreset(int width, int height) {
     return input;
 }
 
+static Input createObstaclePreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 2;
+
+    input.polyominoTypes = malloc(2 * sizeof(Polyomino));
+
+    input.polyominoTypes[0].nPoints = 6;
+    input.polyominoTypes[0].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){0, 1};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+    input.polyominoTypes[0].points[4] = (Point){0, 2};
+    input.polyominoTypes[0].points[5] = (Point){1, 2};
+
+    input.polyominoTypes[1].nPoints = 3;
+    input.polyominoTypes[1].points  = malloc(3 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){1, 0};
+    input.polyominoTypes[1].points[2] = (Point){2, 0};
+
+    input.values = malloc(2 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+
+    input.available = malloc(2 * sizeof(int));
+    input.available[0] = 100000;
+    input.available[1] = 100000;
+
+    return input;
+}
+
+static Input createIrregularPreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    input.polyominoTypes[0].nPoints = 5;
+    input.polyominoTypes[0].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){0, 1};
+    input.polyominoTypes[0].points[4] = (Point){2, 1};
+
+    input.polyominoTypes[1].nPoints = 5;
+    input.polyominoTypes[1].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){1, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 1};
+    input.polyominoTypes[1].points[3] = (Point){2, 1};
+    input.polyominoTypes[1].points[4] = (Point){1, 2};
+
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){0, 1};
+    input.polyominoTypes[2].points[2] = (Point){0, 2};
+    input.polyominoTypes[2].points[3] = (Point){1, 2};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 100000;
+    input.available[1] = 100000;
+    input.available[2] = 100000;
+
+    return input;
+}
+
 Input createInput(int width, int height, PresetType preset, PenaltyType penalty) {
     Input input;
     switch(preset) {
@@ -221,6 +310,12 @@ Input createInput(int width, int height, PresetType preset, PenaltyType penalty)
             break;
         case PRESET_RANDOM:
             input = createRandomPreset(width, height);
+            break;
+        case PRESET_OBSTACLE:
+            input = createObstaclePreset(width, height);
+            break;
+        case PRESET_IRREGULAR:
+            input = createIrregularPreset(width, height);
             break;
     }
     applyPenalty(&input, penalty);

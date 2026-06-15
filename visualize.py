@@ -75,11 +75,7 @@ def visualize_board(csv_path, output_dir="plots"):
         os.makedirs(output_dir)
 
     file_name = os.path.basename(csv_path)
-    match = re.search(r"experiment_iter(\d+)_rank(\d+)\.csv", file_name)
-    if not match:
-        return 
-
-    iteration, rank = match.group(1), match.group(2)
+    name_no_ext = os.path.splitext(file_name)[0]
 
     try:
         metadata, poly_types, penalty_board, placed_list = parse_custom_csv(csv_path)
@@ -142,9 +138,9 @@ def visualize_board(csv_path, output_dir="plots"):
     ax.set_yticklabels([])
     ax.grid(color='grey', linestyle=':', linewidth=0.5)
 
-    plt.title(f"Polyomino Board - Iteration {iteration} | Rank {rank}")
+    plt.title(f"Polyomino Board - {name_no_ext}")
    
-    output_path = os.path.join(output_dir, f"plot_iter{iteration}_rank{rank}.png")
+    output_path = os.path.join(output_dir, f"{name_no_ext}.png")
     plt.savefig(output_path, bbox_inches='tight')
     plt.close()
 
@@ -164,5 +160,33 @@ def process_all_experiment_csvs(search_directory):
         visualize_board(file_path, output_dir="plots")
     print("Visualization finished!")
 
+import pandas as pd
+def plot_weights(csv_path, title, output_name):
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        print(f"Error reading {csv_path}: {e}")
+        return
+
+    plt.figure(figsize=(10, 6))
+    for col in df.columns:
+        if col != 'gen':
+            plt.plot(df['gen'], df[col], label=col, linewidth=2)
+
+    plt.title(title)
+    plt.xlabel("Pokolenie (Generation)")
+    plt.ylabel("Waga (Weight)")
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.savefig(f"plots/weights_{output_name}.png")
+    plt.close()
+
 if __name__ == "__main__":
-    process_all_experiment_csvs(".")
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "weights":
+        plot_weights('weights_tetris.csv', 'Ewolucja Wag Mutacji (Tetris)', 'tetris')
+        plot_weights('weights_obstacle.csv', 'Ewolucja Wag Mutacji (Przeszkody)', 'obstacle')
+        plot_weights('weights_irregular.csv', 'Ewolucja Wag Mutacji (Trudne Geometrie)', 'irregular')
+    else:
+        process_all_experiment_csvs(".")

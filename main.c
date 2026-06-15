@@ -99,14 +99,24 @@ void customToCsv(Input *input, Genotype *genotype, const char *filename) {
     fclose(f);
 }
 
-void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params, const char* output_json, int silent) {
+void experiment(Input input, int starting_states, int single_state_duplications, int max_iterations, int mutations_per_iteration, int patience, Params params, const char* output_json, const char* prefix, int silent, int adapt_weights) {
 
-    int total_weight = params.alterOneGeneMutation +
-                       params.removeOneGeneMutation +
-                       params.addOneGeneMutation +
-                       params.shiftOneGeneMutation +
-                       params.rotateOneGeneMutation +
-                       params.clearAreaMutation;
+    double dynamic_weights[6] = {
+        (double)params.alterOneGeneMutation,
+        (double)params.removeOneGeneMutation,
+        (double)params.addOneGeneMutation,
+        (double)params.shiftOneGeneMutation,
+        (double)params.rotateOneGeneMutation,
+        (double)params.clearAreaMutation
+    };
+
+    FILE* fw = NULL;
+    if (adapt_weights && prefix != NULL && strlen(prefix) > 0) {
+        char w_filename[256];
+        sprintf(w_filename, "weights_%s.csv", prefix);
+        fw = fopen(w_filename, "w");
+        if (fw) fprintf(fw, "gen,alter,remove,add,shift,rotate,clear\n");
+    }
 
     int global_success[6] = {0, 0, 0, 0, 0, 0};
     int global_fail[6] = {0, 0, 0, 0, 0, 0};
@@ -154,34 +164,42 @@ void experiment(Input input, int starting_states, int single_state_duplications,
                 children[child_idx].state = buildStateFromGenotype(&input, children[child_idx].genotype);
 
                 for (int m = 0; m < mutations_per_iteration; m++) {
-                    int r = rand() % total_weight;
-                    int current_sum = 0;
+                    double total_weight = 0;
+                    for (int w = 0; w < 6; w++) total_weight += dynamic_weights[w];
+                    double r = ((double)rand() / (double)RAND_MAX) * total_weight;
+                    double current_sum = 0;
                     bool success = false;
                     int chosen_mut = 0;
+                    
+                    int parentScore = children[child_idx].state.score;
 
-                    if (r < (current_sum += params.alterOneGeneMutation)) {
+                    if (r < (current_sum += dynamic_weights[0])) {
                         success = alterOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 0;
                     } 
-                    else if (r < (current_sum += params.removeOneGeneMutation)) {
+                    else if (r < (current_sum += dynamic_weights[1])) {
                         success = removeOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 1;
                     } 
-                    else if (r < (current_sum += params.addOneGeneMutation)) {
+                    else if (r < (current_sum += dynamic_weights[2])) {
                         success = addOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 2;
                     } 
-                    else if (r < (current_sum += params.shiftOneGeneMutation)) {
+                    else if (r < (current_sum += dynamic_weights[3])) {
                         success = shiftOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 3;
                     } 
-                    else if (r < (current_sum += params.rotateOneGeneMutation)) {
+                    else if (r < (current_sum += dynamic_weights[4])) {
                         success = rotateOneGeneMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 4;
                     } 
                     else {
                         success = clearAreaMutation(&input, &children[child_idx].state, children[child_idx].genotype);
                         chosen_mut = 5;
+                    }
+                    
+                    if (adapt_weights && children[child_idx].state.score > parentScore) {
+                        dynamic_weights[chosen_mut] += 1.0;
                     }
 
                     if (success) {
@@ -248,19 +266,23 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         free(children);
         free(pool);
 
+        if (adapt_weights) {
+            for (int w = 0; w < 6; w++) {
+                dynamic_weights[w] *= 0.99;
+                if (dynamic_weights[w] < 1.0) dynamic_weights[w] = 1.0;
+            }
+        }
+
+        if (fw) {
+            fprintf(fw, "%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", iter, dynamic_weights[0], dynamic_weights[1], dynamic_weights[2], dynamic_weights[3], dynamic_weights[4], dynamic_weights[5]);
+        }
+
         iteration_scores[iter] = population[0].state.score;
         actual_iterations++;
 
         if (!silent) printf("Iteration %d | Best score: %d\n", iter, population[0].state.score);
 
-        if(!silent && (iter == 0 || iter == max_iterations-1)){
-            for (int i = 0; i < starting_states; i++) {
-                char csv_name[64];
-                sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
-                customToCsv(&input, population[i].genotype, csv_name);
-                break;
-            }
-        }
+        // Removed intermediate CSV logging to avoid clutter
 
         if (population[0].state.score > best_score) {
             best_score = population[0].state.score;
@@ -272,17 +294,16 @@ void experiment(Input input, int starting_states, int single_state_duplications,
         if (patience_counter >= patience) {
             if (!silent) {
                 printf("Early stopping: no improvement for %d iterations.\n", patience);
-                for (int i = 0; i < starting_states; i++) {
-                    char csv_name[64];
-                    sprintf(csv_name, "experiment_iter%d_rank%d.csv", iter, i);
-                    customToCsv(&input, population[i].genotype, csv_name);
-                    break;
-                }
             }
             break;
         }
     }
 
+    char final_csv_name[256];
+    sprintf(final_csv_name, "%s.csv", prefix);
+    customToCsv(&input, population[0].genotype, final_csv_name);
+
+    if (fw) fclose(fw);
 
     int selected_success[6] = {0, 0, 0, 0, 0, 0};
     int selected_fail[6] = {0, 0, 0, 0, 0, 0};
@@ -380,7 +401,9 @@ int main(int argc, char* argv[]) {
     int mutations_per_iteration = 40;
     int patience = 10;
     char output_json[512] = "";
+    char prefix[256] = "manual";
     int silent = 0;
+    int adapt_weights = 0;
 
     if (argc > 1) {
         for (int i = 1; i < argc; i++) {
@@ -391,6 +414,8 @@ int main(int argc, char* argv[]) {
                 if (strcmp(argv[i], "tetris") == 0) preset = PRESET_TETRIS;
                 else if (strcmp(argv[i], "simple") == 0) preset = PRESET_SIMPLE;
                 else if (strcmp(argv[i], "random") == 0) preset = PRESET_RANDOM;
+                else if (strcmp(argv[i], "obstacle") == 0) preset = PRESET_OBSTACLE;
+                else if (strcmp(argv[i], "irregular") == 0) preset = PRESET_IRREGULAR;
             } else if (strcmp(argv[i], "--penalty") == 0 && i + 1 < argc) {
                 i++;
                 if (strcmp(argv[i], "uniform") == 0) penalty = PENALTY_UNIFORM;
@@ -399,6 +424,8 @@ int main(int argc, char* argv[]) {
                 else if (strcmp(argv[i], "bad_corners") == 0) penalty = PENALTY_BAD_CORNERS;
                 else if (strcmp(argv[i], "good_corners") == 0) penalty = PENALTY_GOOD_CORNERS;
                 else if (strcmp(argv[i], "checkerboard") == 0) penalty = PENALTY_CHECKERBOARD;
+                else if (strcmp(argv[i], "obstacle") == 0) penalty = PENALTY_OBSTACLE;
+                else if (strcmp(argv[i], "modulo") == 0) penalty = PENALTY_MODULO;
             }
             else if (strcmp(argv[i], "--starting_states") == 0 && i + 1 < argc) starting_states = atoi(argv[++i]);
             else if (strcmp(argv[i], "--duplications") == 0 && i + 1 < argc) single_state_duplications = atoi(argv[++i]);
@@ -416,6 +443,12 @@ int main(int argc, char* argv[]) {
                 strncpy(output_json, argv[i], sizeof(output_json) - 1);
                 output_json[sizeof(output_json) - 1] = '\0';
             }
+            else if (strcmp(argv[i], "--prefix") == 0 && i + 1 < argc) {
+                i++;
+                strncpy(prefix, argv[i], sizeof(prefix) - 1);
+                prefix[sizeof(prefix) - 1] = '\0';
+            }
+            else if (strcmp(argv[i], "--adapt_weights") == 0) adapt_weights = 1;
             else if (strcmp(argv[i], "--silent") == 0) silent = 1;
         }
     } else {
@@ -454,7 +487,7 @@ int main(int argc, char* argv[]) {
     Input input = createInput(width, height, preset, penalty);
 
     if (!silent) printf("Starting experiment with isolated entity tracking...\n");
-    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params, output_json, silent);
+    experiment(input, starting_states, single_state_duplications, max_iterations, mutations_per_iteration, patience, test_params, output_json, prefix, silent, adapt_weights);
 
     freeInput(input);
     return 0;
