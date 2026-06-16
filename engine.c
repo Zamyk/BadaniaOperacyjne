@@ -55,17 +55,61 @@ void removeFromBoard(int w, int h, int* board, Point position, Polyomino polyomi
 
 // --- Input ---
 
-Input createSmallExampleInput() {
+static void applyPenalty(Input* input, PenaltyType type) {
+    int totalCells = input->width * input->height;
+    input->penalties = malloc(totalCells * sizeof(int));
+
+    for (int y = 0; y < input->height; y++) {
+        for (int x = 0; x < input->width; x++) {
+            int idx = x + input->width * y;
+            int penalty = 1;
+
+            switch (type) {
+                case PENALTY_UNIFORM:
+                    penalty = 1;
+                    break;
+                case PENALTY_BAD_DIAGONAL:
+                    if (x == y || x == input->width - 1 - y) penalty = -10;
+                    break;
+                case PENALTY_GOOD_DIAGONAL:
+                    if (x == y || x == input->width - 1 - y) penalty = 10;
+                    break;
+                case PENALTY_BAD_CORNERS:
+                    if ((x == 0 || x == input->width - 1) && (y == 0 || y == input->height - 1)) penalty = -10;
+                    break;
+                case PENALTY_GOOD_CORNERS:
+                    if ((x == 0 || x == input->width - 1) && (y == 0 || y == input->height - 1)) penalty = 10;
+                    break;
+                case PENALTY_CHECKERBOARD:
+                    if ((x + y) % 2 == 0) penalty = 5;
+                    else penalty = -5;
+                    break;
+                case PENALTY_OBSTACLE:
+                    if (x >= input->width/2 - 2 && x <= input->width/2 + 1 &&
+                        y >= input->height/2 - 2 && y <= input->height/2 + 1) {
+                        penalty = -1000;
+                    } else {
+                        penalty = 10;
+                    }
+                    break;
+                case PENALTY_MODULO:
+                    penalty = -((x * 3 + y * 7) % 5) * 5;
+                    break;
+            }
+            input->penalties[idx] = penalty;
+        }
+    }
+}
+
+static Input createTetrisPreset(int width, int height) {
     Input input;
-    input.width  = 10;
-    input.height = 10;
+    input.width  = width;
+    input.height = height;
     input.nPolyominoTypes = 3;
 
     input.polyominoTypes = malloc(3 * sizeof(Polyomino));
 
     // T-block
-    //  X
-    // XXX
     input.polyominoTypes[0].nPoints = 4;
     input.polyominoTypes[0].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[0].points[0] = (Point){0, 0};
@@ -74,9 +118,6 @@ Input createSmallExampleInput() {
     input.polyominoTypes[0].points[3] = (Point){1, 1};
 
     // L-block
-    // X
-    // X
-    // XX
     input.polyominoTypes[1].nPoints = 4;
     input.polyominoTypes[1].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[1].points[0] = (Point){0, 0};
@@ -85,8 +126,6 @@ Input createSmallExampleInput() {
     input.polyominoTypes[1].points[3] = (Point){1, 2};
 
     // S-block
-    //  XX
-    // XX
     input.polyominoTypes[2].nPoints = 4;
     input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
     input.polyominoTypes[2].points[0] = (Point){0, 0};
@@ -94,26 +133,362 @@ Input createSmallExampleInput() {
     input.polyominoTypes[2].points[2] = (Point){1, 1};
     input.polyominoTypes[2].points[3] = (Point){2, 1};
 
-    // values = 0 for all types
-    input.values = calloc(3, sizeof(int));
-    // testowałem wartości dla klocków
-    // input.values = malloc(3 * sizeof(int));
-    // input.values[0] = 10; // T-block wart 10
-    // input.values[1] = 10; // L-block wart 10
-    // input.values[2] = 10; // S-block wart 10
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
 
-    // available = 5 of each
     input.available = malloc(3 * sizeof(int));
-    input.available[0] = 80;
-    input.available[1] = 80;
-    input.available[2] = 80;
+    input.available[0] = 1000000;
+    input.available[1] = 1000000;
+    input.available[2] = 1000000;
 
-    // penalties = 1 for each cell (10x10 = 100 cells)
-    input.penalties = malloc(100 * sizeof(int));
-    for (int i = 0; i < 100; i++) {
-        input.penalties[i] = 1;
+    return input;
+}
+
+static Input createSimplePreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 1;
+
+    input.polyominoTypes = malloc(1 * sizeof(Polyomino));
+
+    // 2x1 block (domino)
+    input.polyominoTypes[0].nPoints = 2;
+    input.polyominoTypes[0].points  = malloc(2 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+
+    input.values = malloc(1 * sizeof(int));
+    input.values[0] = 0; 
+
+    input.available = malloc(1 * sizeof(int));
+    input.available[0] = 1000000;
+
+    return input;
+}
+
+static Input createRandomPreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 5;
+
+    input.polyominoTypes = malloc(input.nPolyominoTypes * sizeof(Polyomino));
+    input.values = malloc(input.nPolyominoTypes * sizeof(int));
+    input.available = malloc(input.nPolyominoTypes * sizeof(int));
+
+    for (int i = 0; i < input.nPolyominoTypes; i++) {
+        int size = (rand() % 5) + 2; // size between 1 and 5
+        input.polyominoTypes[i].nPoints = size;
+        input.polyominoTypes[i].points = malloc(size * sizeof(Point));
+        
+        // Very basic random polyomino generation: walk randomly
+        input.polyominoTypes[i].points[0] = (Point){0, 0};
+        for (int p = 1; p < size; p++) {
+            Point neighbor;
+            bool valid = false;
+            while (!valid) {
+                // Pick an existing point
+                int existing_idx = rand() % p;
+                Point existing = input.polyominoTypes[i].points[existing_idx];
+                
+                // Pick a direction
+                int dir = rand() % 4;
+                int dx = (dir == 0) ? 1 : (dir == 1) ? -1 : 0;
+                int dy = (dir == 2) ? 1 : (dir == 3) ? -1 : 0;
+                
+                neighbor = (Point){existing.x + dx, existing.y + dy};
+                
+                // Check if already exists
+                valid = true;
+                for (int check = 0; check < p; check++) {
+                    if (input.polyominoTypes[i].points[check].x == neighbor.x && 
+                        input.polyominoTypes[i].points[check].y == neighbor.y) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            input.polyominoTypes[i].points[p] = neighbor;
+        }
+
+        input.values[i] = 0;
+        input.available[i] = 1000000;
     }
 
+    return input;
+}
+
+static Input createObstaclePreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 2;
+
+    input.polyominoTypes = malloc(2 * sizeof(Polyomino));
+
+    input.polyominoTypes[0].nPoints = 6;
+    input.polyominoTypes[0].points  = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){0, 1};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+    input.polyominoTypes[0].points[4] = (Point){0, 2};
+    input.polyominoTypes[0].points[5] = (Point){1, 2};
+
+    input.polyominoTypes[1].nPoints = 3;
+    input.polyominoTypes[1].points  = malloc(3 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){1, 0};
+    input.polyominoTypes[1].points[2] = (Point){2, 0};
+
+    input.values = malloc(2 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+
+    input.available = malloc(2 * sizeof(int));
+    input.available[0] = 100000;
+    input.available[1] = 100000;
+
+    return input;
+}
+
+static Input createIrregularPreset(int width, int height) {
+    Input input;
+    input.width  = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    input.polyominoTypes[0].nPoints = 5;
+    input.polyominoTypes[0].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){0, 1};
+    input.polyominoTypes[0].points[4] = (Point){2, 1};
+
+    input.polyominoTypes[1].nPoints = 5;
+    input.polyominoTypes[1].points  = malloc(5 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){1, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 1};
+    input.polyominoTypes[1].points[3] = (Point){2, 1};
+    input.polyominoTypes[1].points[4] = (Point){1, 2};
+
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points  = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){0, 1};
+    input.polyominoTypes[2].points[2] = (Point){0, 2};
+    input.polyominoTypes[2].points[3] = (Point){1, 2};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 100000;
+    input.available[1] = 100000;
+    input.available[2] = 100000;
+
+    return input;
+}
+
+static Input createWeightedPreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // T-block
+    input.polyominoTypes[0].nPoints = 4;
+    input.polyominoTypes[0].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+
+    // L-block
+    input.polyominoTypes[1].nPoints = 4;
+    input.polyominoTypes[1].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){1, 2};
+
+    // S-block
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){1, 1};
+    input.polyominoTypes[2].points[3] = (Point){2, 1};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 40;
+    input.values[1] = 50;
+    input.values[2] = 10;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 1000;
+    input.available[1] = 1000;
+    input.available[2] = 1000;
+
+    return input;
+}
+
+static Input createLargePreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // Tlarge-block
+    input.polyominoTypes[0].nPoints = 10;
+    input.polyominoTypes[0].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+    input.polyominoTypes[0].points[6] = (Point){6, 0};
+    input.polyominoTypes[0].points[7] = (Point){3, 1};
+    input.polyominoTypes[0].points[8] = (Point){3, 2};
+    input.polyominoTypes[0].points[9] = (Point){3, 3};
+
+    // Llarge-block
+    input.polyominoTypes[1].nPoints = 10;
+    input.polyominoTypes[1].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){0, 3};
+    input.polyominoTypes[1].points[4] = (Point){0, 4};
+    input.polyominoTypes[1].points[5] = (Point){0, 5};
+    input.polyominoTypes[1].points[6] = (Point){0, 6};
+    input.polyominoTypes[1].points[7] = (Point){1, 0};
+    input.polyominoTypes[1].points[8] = (Point){2, 0};
+    input.polyominoTypes[1].points[9] = (Point){3, 0};
+
+    // Slarge-block
+    input.polyominoTypes[2].nPoints = 10;
+    input.polyominoTypes[2].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){2, 0};
+    input.polyominoTypes[2].points[3] = (Point){3, 0};
+    input.polyominoTypes[2].points[4] = (Point){3, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 2};
+    input.polyominoTypes[2].points[6] = (Point){3, 3};
+    input.polyominoTypes[2].points[7] = (Point){4, 3};
+    input.polyominoTypes[2].points[8] = (Point){5, 3};
+    input.polyominoTypes[2].points[9] = (Point){6, 3};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 1000;
+    input.available[1] = 1000;
+    input.available[2] = 1000;
+
+    return input;
+}
+
+static Input createSimpleShapesPreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // line-block (1x6)
+    input.polyominoTypes[0].nPoints = 6;
+    input.polyominoTypes[0].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+
+    // XXXX-block (3x2)
+    input.polyominoTypes[1].nPoints = 6;
+    input.polyominoTypes[1].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 0};
+    input.polyominoTypes[1].points[3] = (Point){1, 1};
+    input.polyominoTypes[1].points[4] = (Point){2, 0};
+    input.polyominoTypes[1].points[5] = (Point){2, 1};
+
+    // XX-block
+    input.polyominoTypes[2].nPoints = 6;
+    input.polyominoTypes[2].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){0, 1};
+    input.polyominoTypes[2].points[3] = (Point){1, 1};
+    input.polyominoTypes[2].points[4] = (Point){2, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 1};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 120;
+    input.available[1] = 120;
+    input.available[2] = 120;
+
+    return input;
+}
+
+Input createInput(int width, int height, PresetType preset, PenaltyType penalty) {
+    Input input;
+    switch(preset) {
+        case PRESET_TETRIS:
+            input = createTetrisPreset(width, height);
+            break;
+        case PRESET_SIMPLE:
+            input = createSimplePreset(width, height);
+            break;
+        case PRESET_RANDOM:
+            input = createRandomPreset(width, height);
+            break;
+        case PRESET_OBSTACLE:
+            input = createObstaclePreset(width, height);
+            break;
+        case PRESET_IRREGULAR:
+            input = createIrregularPreset(width, height);
+            break;
+        case PRESET_WEIGHT:
+            input = createWeightedPreset(width, height);
+            break;
+        case PRESET_LARGE:
+            input = createLargePreset(width, height);
+            break;
+        case PRESET_SSHAPES:
+            input = createSimpleShapesPreset(width, height);
+    }
+    applyPenalty(&input, penalty);
     return input;
 }
 
@@ -585,7 +960,7 @@ void toCsv(const Input* input, State* state, const char* path) {
 
 Genotype* createRandomStartingState(Input* input, State* state) {
     //srand(3);
-    Genotype *genotype = malloc(sizeof(Genotype));
+    Genotype *genotype = calloc(1, sizeof(Genotype));
     genotype->genes = malloc(input->width * input->height * sizeof(Gen *));
 
     for(int i = 0; i < input->width * input->height; i++) {
@@ -631,7 +1006,7 @@ Genotype* createRandomStartingState(Input* input, State* state) {
 }
 
 
-void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int width = input->width;
     int height = input->height;
     int totalCells = width * height;
@@ -645,7 +1020,7 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         }
     }
 
-    if (count == 0) return;
+    if (count == 0) return false;
 
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -665,16 +1040,16 @@ void alterOneGeneMutation(Input* input, State* state, Genotype* genotype) {
                         newGen->polyominoIndex = i;
                         newGen->point = (Point){x, y};
                         newGen->rotation = rotation;
-                        
                         genotype->genes[x + input->width * y] = newGen;
                     }
                 }
             }
         }
     }
+    return true;
 }
 
-void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -687,7 +1062,7 @@ void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
 
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
 
     int randomIndex = occupiedIndices[rand() % count];
@@ -698,9 +1073,10 @@ void removeOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     free(gen);
     genotype->genes[randomIndex] = NULL;
     free(occupiedIndices);
+    return true;
 }
 
-void addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int maxAttempts = 100;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
         int x = rand() % input->width;
@@ -715,12 +1091,13 @@ void addOneGeneMutation(Input* input, State* state, Genotype* genotype) {
             newGen->point = (Point){x, y};
             newGen->rotation = rot;
             genotype->genes[x + input->width * y] = newGen;
-            return;
+            return true;
         }
     }
+    return false;
 }
 
-void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -729,7 +1106,7 @@ void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     }
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -746,15 +1123,18 @@ void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         addToState(input, state, gen->polyominoIndex, newPoint, gen->rotation);
         gen->point = newPoint;
         genotype->genes[newPoint.x + input->width * newPoint.y] = gen;
+        free(occupiedIndices);
+        return true;
     } else {
         // revert
         addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return false;
     }
-    free(occupiedIndices);
 }
 
-void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
+bool rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     int totalCells = input->width * input->height;
     int* occupiedIndices = malloc(totalCells * sizeof(int));
     int count = 0;
@@ -763,7 +1143,7 @@ void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
     }
     if (count == 0) {
         free(occupiedIndices);
-        return;
+        return false;
     }
     int randomIndex = occupiedIndices[rand() % count];
     Gen* gen = genotype->genes[randomIndex];
@@ -777,15 +1157,18 @@ void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype) {
         addToState(input, state, gen->polyominoIndex, gen->point, newRot);
         gen->rotation = newRot;
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return true;
     } else {
         // revert
         addToState(input, state, gen->polyominoIndex, gen->point, gen->rotation);
         genotype->genes[randomIndex] = gen;
+        free(occupiedIndices);
+        return false;
     }
-    free(occupiedIndices);
 }
 
-void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
+bool clearAreaMutation(Input* input, State* state, Genotype* genotype) {
     int cx = rand() % input->width;
     int cy = rand() % input->height;
     int areaSize = 4;
@@ -806,6 +1189,62 @@ void clearAreaMutation(Input* input, State* state, Genotype* genotype) {
             }
         }
     }
+    return true;
+}
+
+Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype* parentB) {
+    Genotype* child = malloc(sizeof(Genotype));
+    int n = input->width * input->height;
+    
+    child->genes = malloc(n * sizeof(Gen*));
+
+    int cut = rand() % n;
+
+    for (int i = 0; i < n; i++) {
+        Gen* src = (i < cut) ? parentA->genes[i] : parentB->genes[i];
+        
+        if (src != NULL) {
+            child->genes[i] = malloc(sizeof(Gen));
+            child->genes[i]->polyominoIndex = src->polyominoIndex;
+            child->genes[i]->point = src->point;
+            child->genes[i]->rotation = src->rotation;
+        } else {
+            child->genes[i] = NULL;
+        }
+    }
+    return child;
+}
+
+State buildStateFromGenotype(const Input* input, Genotype* genotype) {
+    State state = createState(input); 
+    int n = input->width * input->height; 
+
+    for (int i = 0; i < n; i++) {
+        Gen* g = genotype->genes[i];
+        if (g != NULL) { 
+            // 1. Sprawdzamy, czy CAŁY klocek zmieści się na planszy bez kolizji
+            if (canAddToState(input, &state, g->polyominoIndex, g->point, g->rotation)) {
+                
+                // 2. STAWIANIE KLOCKA: Zamiast g->polyominoIndex, przekazujemy 'i' (unikalne ID).
+                // Dzięki temu każdy klocek otrzyma swój własny, unikalny kolor w Pythonie!
+                addToBoard(input->width, input->height, state.board, g->point, input->polyominoTypes[g->polyominoIndex], g->rotation, i);
+                
+                // Aktualizacja statystyk stanu
+                state.used[g->polyominoIndex]++;
+                state.score += input->values[g->polyominoIndex];
+                for (int p_idx = 0; p_idx < input->polyominoTypes[g->polyominoIndex].nPoints; ++p_idx) {
+                    Point p = getPolyominoPoint(input->polyominoTypes[g->polyominoIndex], g->point, g->rotation, p_idx);
+                    state.score += input->penalties[p.x + input->width * p.y];
+                }
+
+            } else {
+                // 3. RESTRYKCJA: Jeśli wykryto nakładanie się, usuwamy wadliwy gen ewolucyjny
+                free(genotype->genes[i]);
+                genotype->genes[i] = NULL;
+            }
+        }
+    }
+    return state;
 }
 
 int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights) {

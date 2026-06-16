@@ -40,13 +40,31 @@ typedef struct {
   int* penalties;
 } Input;
 
-Input createSmallExampleInput();
-Input createTetrisExampleInput();
-Input createObstacleExampleInput();
-Input createIrregularExampleInput();
-Input createLargeExampleInput();
-Input createWeightedExampleInput();
-Input createSimpleExampleInput();
+
+typedef enum {
+  PRESET_TETRIS,
+  PRESET_SIMPLE,
+  PRESET_RANDOM,
+    PRESET_OBSTACLE,
+    PRESET_IRREGULAR,
+    PRESET_WEIGHT,
+  PRESET_LARGE,
+  PRESET_SSHAPES
+} PresetType;
+
+typedef enum {
+  PENALTY_UNIFORM,
+  PENALTY_BAD_DIAGONAL,
+  PENALTY_GOOD_DIAGONAL,
+  PENALTY_BAD_CORNERS,
+  PENALTY_GOOD_CORNERS,
+  PENALTY_CHECKERBOARD,
+    PENALTY_OBSTACLE,
+    PENALTY_MODULO
+} PenaltyType;
+
+Input createInput(int width, int height, PresetType preset, PenaltyType penalty);
+
 void freeInput(Input input);
 
 
@@ -74,19 +92,23 @@ typedef struct {
 
 typedef struct {
   Gen **genes;
+  int successful_mutations[6];
 } Genotype;
 
 
 Genotype* createRandomStartingState(Input* input, State* state);
-void alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void removeOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void addOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void shiftOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void rotateOneGeneMutation(Input* input, State* state, Genotype* genotype);
-void clearAreaMutation(Input* input, State* state, Genotype* genotype);
+bool alterOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool removeOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool addOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool shiftOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool rotateOneGeneMutation(Input* input, State* state, Genotype* genotype);
+bool clearAreaMutation(Input* input, State* state, Genotype* genotype);
 int mutate(Input* input, State* state, Genotype* genotype, double* weights, int num_weights);
 
 
 Genotype* copyGenotype(const Input* input, const Genotype* src);
 
 State copyState(const Input* input, const State* src);
+
+Genotype* crossover(const Input* input, const Genotype* parentA, const Genotype* parentB);
+State buildStateFromGenotype(const Input* input, Genotype* genotype);
