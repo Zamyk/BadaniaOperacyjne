@@ -416,6 +416,9 @@ int main(int argc, char* argv[]) {
                 else if (strcmp(argv[i], "random") == 0) preset = PRESET_RANDOM;
                 else if (strcmp(argv[i], "obstacle") == 0) preset = PRESET_OBSTACLE;
                 else if (strcmp(argv[i], "irregular") == 0) preset = PRESET_IRREGULAR;
+                else if (strcmp(argv[i], "weight") == 0) preset = PRESET_WEIGHT;
+                else if (strcmp(argv[i], "large") == 0) preset = PRESET_LARGE;
+                else if (strcmp(argv[i], "sshapes") == 0) preset = PRESET_SSHAPES;
             } else if (strcmp(argv[i], "--penalty") == 0 && i + 1 < argc) {
                 i++;
                 if (strcmp(argv[i], "uniform") == 0) penalty = PENALTY_UNIFORM;

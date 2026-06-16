@@ -299,6 +299,168 @@ static Input createIrregularPreset(int width, int height) {
     return input;
 }
 
+static Input createWeightedPreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // T-block
+    input.polyominoTypes[0].nPoints = 4;
+    input.polyominoTypes[0].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){1, 1};
+
+    // L-block
+    input.polyominoTypes[1].nPoints = 4;
+    input.polyominoTypes[1].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){1, 2};
+
+    // S-block
+    input.polyominoTypes[2].nPoints = 4;
+    input.polyominoTypes[2].points = malloc(4 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){1, 1};
+    input.polyominoTypes[2].points[3] = (Point){2, 1};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 40;
+    input.values[1] = 50;
+    input.values[2] = 10;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 1000;
+    input.available[1] = 1000;
+    input.available[2] = 1000;
+
+    return input;
+}
+
+static Input createLargePreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // Tlarge-block
+    input.polyominoTypes[0].nPoints = 10;
+    input.polyominoTypes[0].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+    input.polyominoTypes[0].points[6] = (Point){6, 0};
+    input.polyominoTypes[0].points[7] = (Point){3, 1};
+    input.polyominoTypes[0].points[8] = (Point){3, 2};
+    input.polyominoTypes[0].points[9] = (Point){3, 3};
+
+    // Llarge-block
+    input.polyominoTypes[1].nPoints = 10;
+    input.polyominoTypes[1].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){0, 2};
+    input.polyominoTypes[1].points[3] = (Point){0, 3};
+    input.polyominoTypes[1].points[4] = (Point){0, 4};
+    input.polyominoTypes[1].points[5] = (Point){0, 5};
+    input.polyominoTypes[1].points[6] = (Point){0, 6};
+    input.polyominoTypes[1].points[7] = (Point){1, 0};
+    input.polyominoTypes[1].points[8] = (Point){2, 0};
+    input.polyominoTypes[1].points[9] = (Point){3, 0};
+
+    // Slarge-block
+    input.polyominoTypes[2].nPoints = 10;
+    input.polyominoTypes[2].points = malloc(10 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){2, 0};
+    input.polyominoTypes[2].points[3] = (Point){3, 0};
+    input.polyominoTypes[2].points[4] = (Point){3, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 2};
+    input.polyominoTypes[2].points[6] = (Point){3, 3};
+    input.polyominoTypes[2].points[7] = (Point){4, 3};
+    input.polyominoTypes[2].points[8] = (Point){5, 3};
+    input.polyominoTypes[2].points[9] = (Point){6, 3};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 1000;
+    input.available[1] = 1000;
+    input.available[2] = 1000;
+
+    return input;
+}
+
+static Input createSimpleShapesPreset(int width, int height)
+{
+    Input input;
+    input.width = width;
+    input.height = height;
+    input.nPolyominoTypes = 3;
+
+    input.polyominoTypes = malloc(3 * sizeof(Polyomino));
+
+    // line-block (1x6)
+    input.polyominoTypes[0].nPoints = 6;
+    input.polyominoTypes[0].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[0].points[0] = (Point){0, 0};
+    input.polyominoTypes[0].points[1] = (Point){1, 0};
+    input.polyominoTypes[0].points[2] = (Point){2, 0};
+    input.polyominoTypes[0].points[3] = (Point){3, 0};
+    input.polyominoTypes[0].points[4] = (Point){4, 0};
+    input.polyominoTypes[0].points[5] = (Point){5, 0};
+
+    // XXXX-block (3x2)
+    input.polyominoTypes[1].nPoints = 6;
+    input.polyominoTypes[1].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[1].points[0] = (Point){0, 0};
+    input.polyominoTypes[1].points[1] = (Point){0, 1};
+    input.polyominoTypes[1].points[2] = (Point){1, 0};
+    input.polyominoTypes[1].points[3] = (Point){1, 1};
+    input.polyominoTypes[1].points[4] = (Point){2, 0};
+    input.polyominoTypes[1].points[5] = (Point){2, 1};
+
+    // XX-block
+    input.polyominoTypes[2].nPoints = 6;
+    input.polyominoTypes[2].points = malloc(6 * sizeof(Point));
+    input.polyominoTypes[2].points[0] = (Point){0, 0};
+    input.polyominoTypes[2].points[1] = (Point){1, 0};
+    input.polyominoTypes[2].points[2] = (Point){0, 1};
+    input.polyominoTypes[2].points[3] = (Point){1, 1};
+    input.polyominoTypes[2].points[4] = (Point){2, 1};
+    input.polyominoTypes[2].points[5] = (Point){3, 1};
+
+    input.values = malloc(3 * sizeof(int));
+    input.values[0] = 0;
+    input.values[1] = 0;
+    input.values[2] = 0;
+
+    input.available = malloc(3 * sizeof(int));
+    input.available[0] = 120;
+    input.available[1] = 120;
+    input.available[2] = 120;
+
+    return input;
+}
+
 Input createInput(int width, int height, PresetType preset, PenaltyType penalty) {
     Input input;
     switch(preset) {
@@ -317,6 +479,14 @@ Input createInput(int width, int height, PresetType preset, PenaltyType penalty)
         case PRESET_IRREGULAR:
             input = createIrregularPreset(width, height);
             break;
+        case PRESET_WEIGHT:
+            input = createWeightedPreset(width, height);
+            break;
+        case PRESET_LARGE:
+            input = createLargePreset(width, height);
+            break;
+        case PRESET_SSHAPES:
+            input = createSimpleShapesPreset(width, height);
     }
     applyPenalty(&input, penalty);
     return input;
